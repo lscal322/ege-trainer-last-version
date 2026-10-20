@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}Режим Экзамен — {{ subj.title }}{% endblock %}
+{% block content %}
+<div class="container" style="max-width:680px">
+  <a href="/py/subjects/{{ subject }}" class="back-link">← {{ subj.title }}</a>
+  <div style="text-align:center;padding:40px 0 20px">
+    <div style="font-size:4rem;margin-bottom:16px">{{ subj.icon }}</div>
+    <div class="page-title">Режим «Экзамен»</div>
+    <div class="page-subtitle">Полное воспроизведение условий ЕГЭ</div>
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;text-align:center">
+      <div>
+        <div style="font-size:2rem;font-weight:800;color:var(--primary)">{{ subj.time_min }}</div>
+        <div style="color:var(--text-muted);font-size:0.88rem">Минут (как на реальном ЕГЭ)</div>
+      </div>
+      <div>
+        <div style="font-size:2rem;font-weight:800;color:var(--secondary)">{{ question_count }}</div>
+        <div style="color:var(--text-muted);font-size:0.88rem">Заданий</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <div style="font-weight:800;margin-bottom:14px">Правила экзамена</div>
+    <ul style="list-style:none;display:flex;flex-direction:column;gap:10px">
+      <li style="display:flex;gap:10px;align-items:flex-start">
+        <div><strong>Таймер</strong> — отображается оставшееся время. Когда время истечёт, тест завершится автоматически.</div>
+      </li>
+      <li style="display:flex;gap:10px;align-items:flex-start">
+        <div><strong>Фокус</strong> — при переключении вкладки браузера вы получите предупреждение (как на реальном экзамене).</div>
+      </li>
+      <li style="display:flex;gap:10px;align-items:flex-start">
+        <div><strong>Результат</strong> — после завершения увидите балл, разбор ошибок и рекомендации.</div>
+      </li>
+      <li style="display:flex;gap:10px;align-items:flex-start">
+        <div><strong>Досрочное завершение</strong> — можно сдать работу в любой момент.</div>
+      </li>
+    </ul>
+  </div>
+
+  <div style="text-align:center;display:flex;gap:12px;justify-content:center">
+    <a href="/py/subjects/{{ subject }}" class="btn btn-secondary btn-lg">Отмена</a>
+    <a href="/py/subjects/{{ subject }}/exam/start" class="btn btn-primary btn-lg" style="background:var(--error);font-size:1.05rem">
+      Начать экзамен
+    </a>
+  </div>
+</div>
+{% endblock %}

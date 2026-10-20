@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Разборы — {{ subj.title }}{% endblock %}
+{% block content %}
+<div class="container">
+  <a href="/py/subjects/{{ subject }}" class="back-link">← {{ subj.title }}</a>
+  <div class="page-title">Разборы заданий</div>
+  <div class="page-subtitle">{{ subj.title }} — типовые задачи с подробным анализом</div>
+
+  {% if items %}
+  {% for item in items %}
+  <div class="analysis-card">
+    <div class="analysis-header">
+      <div>
+        <div style="font-weight:800;font-size:1rem">{{ item.title }}</div>
+        <div style="opacity:0.8;font-size:0.85rem;margin-top:2px">{{ item.content[:120] }}{% if item.content|length > 120 %}...{% endif %}</div>
+      </div>
+      <span class="analysis-number">Задание {{ item.task_number }}</span>
+    </div>
+    <div class="analysis-body">
+      <p style="color:var(--text);line-height:1.6;margin-bottom:12px;white-space:pre-wrap">{{ item.content }}</p>
+    </div>
+  </div>
+  {% endfor %}
+  {% else %}
+  <div class="empty-state">
+    <div class="icon">—</div>
+    <div>Разборы для этого предмета пока не добавлены</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

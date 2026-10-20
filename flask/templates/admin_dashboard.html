@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}Панель администратора — ЕГЭ Тренажёр{% endblock %}
+{% block content %}
+<main class="container admin-dashboard">
+  <h1 class="page-title">Панель администратора</h1>
+  <p class="page-subtitle">Сочинения, новости и обращения учеников</p>
+
+  <section class="admin-summary" aria-label="Статистика">
+    <div class="admin-summary-item">
+      <strong>{{ total_users }}</strong>
+      <span>Учеников</span>
+    </div>
+    <div class="admin-summary-item">
+      <strong>{{ ungraded }}</strong>
+      <span>Не проверено</span>
+    </div>
+    <div class="admin-summary-item">
+      <strong>{{ graded }}</strong>
+      <span>Проверено</span>
+    </div>
+    <div class="admin-summary-item">
+      <strong>{{ news_count }}</strong>
+      <span>Новостей</span>
+    </div>
+  </section>
+
+  <nav class="admin-sections" aria-label="Разделы панели администратора">
+    <a href="/py/admin/essays" class="admin-section">
+      <h2>Сочинения учеников</h2>
+      <p>Проверяйте работы, выставляйте оценки по критериям К1–К12 и оставляйте комментарии.</p>
+      <span class="admin-section-status">
+        {% if ungraded > 0 %}{{ ungraded }} ожидают проверки{% else %}Все проверены{% endif %}
+      </span>
+    </a>
+
+    <a href="/py/admin/news" class="admin-section">
+      <h2>Новости</h2>
+      <p>Добавляйте и удаляйте новости об изменениях в ЕГЭ, важных датах и заданиях.</p>
+      <span class="admin-section-status">
+        {{ news_count }} новостей{% if pending_news_suggestions %} · {{ pending_news_suggestions }} на рассмотрении{% endif %}
+      </span>
+    </a>
+
+    <a href="/py/admin/support" class="admin-section">
+      <h2>Вопросы учеников</h2>
+      <p>Читайте обращения и отвечайте ученикам.</p>
+      <span class="admin-section-status">
+        {% if open_support_tickets %}{{ open_support_tickets }} ждут ответа{% else %}Новых вопросов нет{% endif %}
+      </span>
+    </a>
+  </nav>
+</main>
+{% endblock %}

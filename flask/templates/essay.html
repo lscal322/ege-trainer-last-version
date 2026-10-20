@@ -1,0 +1,273 @@
+{% extends 'base.html' %}
+{% block title %}Сочинение — {{ subj.title }}{% endblock %}
+{% block content %}
+<div class="container">
+  <a href="/py/subjects/{{ subject }}" class="back-link">← {{ subj.title }}</a>
+
+  {# Баннер о проверке последнего сочинения #}
+  {% if submissions and submissions[0].teacher_score is not none %}
+  {% set latest = submissions[0] %}
+  <div style="margin-bottom:20px;padding:16px 20px;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #bbf7d0;border-radius:var(--radius);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+    <div>
+      <div style="font-weight:800;color:#166534;margin-bottom:2px">Ваша последняя работа проверена!</div>
+      <div style="font-size:0.85rem;color:#15803d">
+        Балл преподавателя: <strong>{{ latest.teacher_score }}/22</strong>
+        {% if latest.teacher_graded_at %} · {{ latest.teacher_graded_at[:10] }}{% endif %}
+      </div>
+    </div>
+    <a href="/py/my-essays" class="btn btn-sm" style="background:#16a34a;color:white;border:none">
+      Посмотреть разбор
+    </a>
+  </div>
+  {% elif submissions and submissions[0].teacher_score is none %}
+  <div style="margin-bottom:20px;padding:14px 18px;background:#fffbeb;border:1px solid #fde68a;border-radius:var(--radius);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+    <div style="font-size:0.88rem;color:#92400e">
+      <strong>Работа отправлена</strong> — ожидает проверки преподавателем.
+    </div>
+    <a href="/py/my-essays" class="btn btn-sm btn-secondary">Мои сочинения</a>
+  </div>
+  {% endif %}
+
+  <div class="page-title">Инструмент «Сочинение»</div>
+  <div class="page-subtitle">Напишите сочинение и самостоятельно проверьте по критериям ЕГЭ</div>
+
+  {% if subject == 'russian' %}
+  <div class="card" style="margin:18px 0">
+    <div style="font-weight:800;margin-bottom:8px">Тренировка задания 27 · {{ essay_prompts|length }} авторских учебных текстов</div>
+    <div style="font-size:0.84rem;color:var(--text-muted);margin-bottom:12px">
+      Это оригинальные тренировочные тексты, а не официальные варианты ЕГЭ.
+    </div>
+    <form method="get" action="/py/subjects/russian/essay" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <label style="flex:1;min-width:220px">
+        <span style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:5px">Выберите текст</span>
+        <select name="task" class="form-input" style="width:100%">
+          {% for task in essay_prompts %}
+          <option value="{{ task.id }}" {% if selected_prompt and selected_prompt.id == task.id %}selected{% endif %}>
+            {{ task.title }}
+          </option>
+          {% endfor %}
+        </select>
+      </label>
+      <button class="btn btn-secondary" type="submit">Открыть текст</button>
+    </form>
+    {% if selected_prompt %}
+    <div style="margin-top:16px;padding:16px;background:var(--bg);border-radius:10px">
+      <div style="font-weight:800;margin-bottom:8px">{{ selected_prompt.title }}</div>
+      <div style="line-height:1.75;white-space:pre-wrap">{{ selected_prompt.source_text }}</div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+        <strong>Задание:</strong> {{ selected_prompt.problem }}
+      </div>
+    </div>
+    <input type="hidden" id="essay-prompt-id" value="{{ selected_prompt.id }}">
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="essay-layout-grid" style="display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:24px;align-items:flex-start">
+    <!-- Редактор сочинения -->
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="font-weight:800">Текст сочинения</div>
+          <div id="word-count-badge" style="padding:4px 12px;border-radius:20px;font-weight:700;font-size:0.82rem;background:#fef3c7;color:#92400e">
+            0 слов
+          </div>
+        </div>
+        <textarea id="essay-text" class="form-input" style="min-height:380px;resize:vertical;line-height:1.7;font-size:0.95rem"
+                  placeholder="Напишите своё сочинение здесь...
+
+Минимальный объём — 150 слов. Оптимальный — 200–250 слов.
+
+Структура:
+1. Вступление (2–3 предложения)
+2. Постановка проблемы
+3. Комментарий (2 примера + связь)
+4. Позиция автора
+5. Своя позиция + обоснование
+6. Заключение"></textarea>
+        <div id="word-count-warning" style="display:none;margin-top:8px;padding:8px 12px;background:#fef2f2;border-radius:6px;font-size:0.85rem;color:var(--error)">
+          Минимум 150 слов — иначе 0 баллов за К1–К4!
+        </div>
+        <div id="word-count-ok" style="display:none;margin-top:8px;padding:8px 12px;background:#f0fdf4;border-radius:6px;font-size:0.85rem;color:var(--success)">
+          Объём достаточный. Оптимально: 200–250 слов.
+        </div>
+      </div>
+
+      {% if submissions %}
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="font-weight:800">История работ</div>
+          <a href="/py/my-essays" style="font-size:0.82rem;color:var(--primary);font-weight:600">Подробный разбор →</a>
+        </div>
+        {% for sub in submissions %}
+        <div style="padding:12px;border-radius:8px;border:1px solid {{ 'var(--success)' if sub.teacher_score is not none else 'var(--border)' }};margin-bottom:8px;background:{{ '#f0fdf4' if sub.teacher_score is not none else 'white' }}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="font-weight:600;font-size:0.88rem">{{ sub.word_count }} слов · {{ sub.created_at|short_timestamp }}</span>
+            <div style="display:flex;gap:6px">
+              <span class="badge" style="background:#e0f2fe;color:#0369a1">Самооценка: {{ sub.self_score }}/22</span>
+              {% if sub.teacher_score is not none %}
+              <span class="badge badge-green">Преподаватель: {{ sub.teacher_score }}/22</span>
+              {% else %}
+              <span class="badge" style="background:#fef3c7;color:#92400e">Ожидает</span>
+              {% endif %}
+            </div>
+          </div>
+          {% if sub.teacher_score is not none and sub.teacher_comment %}
+          <div style="font-size:0.78rem;color:#166534;margin-top:4px;border-left:2px solid var(--success);padding-left:8px">
+            {{ sub.teacher_comment[:120] }}{% if sub.teacher_comment|length > 120 %}…{% endif %}
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Чек-лист сочинения -->
+    <div>
+      {% if checklist %}
+      <div class="card essay-checklist-panel">
+        <div style="font-weight:800;margin-bottom:4px">Самопроверка по критериям</div>
+        <p style="font-size:0.78rem;color:var(--text-muted)">Русский язык, ЕГЭ 2026: К1–К10, максимум 22 балла. Менее 150 слов — 0 баллов. Счётчик слов приблизительный, итог проверяет преподаватель.</p>
+        <div style="color:var(--text-muted);font-size:0.78rem;margin-bottom:16px">Отметьте, какие критерии вы выполнили</div>
+
+        <div id="checklist-container">
+          {% for crit in checklist %}
+          <div class="checklist-row" data-key="{{ crit[0] }}" data-max="{{ crit[3] }}">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+              <div>
+                <span style="font-weight:700;color:var(--primary);font-size:0.82rem">{{ crit[0] }}</span>
+                <span style="font-size:0.82rem;color:var(--text);margin-left:4px">{{ crit[1] }}</span>
+              </div>
+              <span style="font-size:0.78rem;color:var(--text-muted);white-space:nowrap;margin-left:8px">макс. {{ crit[3] }}</span>
+            </div>
+            <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:6px">{{ crit[2] }}</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap">
+              {% for v in range(crit[3]+1) %}
+              <button class="score-btn {% if v == 0 %}score-btn-active{% endif %}" data-val="{{ v }}" onclick="setScore('{{ crit[0] }}', {{ v }}, this)">{{ v }}</button>
+              {% endfor %}
+            </div>
+          </div>
+          {% if not loop.last %}<hr style="border:none;border-top:1px solid var(--border);margin:12px 0">{% endif %}
+          {% endfor %}
+        </div>
+
+        <div style="margin-top:16px;padding:14px;background:var(--bg);border-radius:8px;text-align:center">
+          <div style="font-size:1.6rem;font-weight:800;color:var(--primary)" id="total-score">0</div>
+          <div style="font-size:0.8rem;color:var(--text-muted)">из 22 баллов</div>
+          <div style="height:6px;background:var(--border);border-radius:3px;margin:10px 0;overflow:hidden">
+            <div id="score-bar" style="height:100%;background:linear-gradient(90deg,var(--primary-light),var(--secondary));border-radius:3px;width:0%"></div>
+          </div>
+          <div id="score-verdict" style="font-size:0.82rem;font-weight:700;color:var(--text-muted)">—</div>
+        </div>
+
+        <button id="save-essay-btn" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:12px">
+          Отправить на проверку
+        </button>
+        <div id="save-status" style="display:none;margin-top:8px;text-align:center;font-size:0.85rem;color:var(--success)">
+          Сохранено! <a href="/py/my-essays" style="color:var(--primary);font-weight:700">Мои сочинения →</a>
+        </div>
+      </div>
+      {% else %}
+      <div class="card essay-checklist-panel">
+        <div style="font-weight:800;margin-bottom:12px">Критерии проверки</div>
+        <p style="color:var(--text-muted);font-size:0.9rem">Для этого предмета можно отправить учебный развёрнутый ответ преподавателю. Общая учебная шкала здесь не заменяет официальные предметные критерии ЕГЭ.</p>
+        <button id="save-essay-btn" class="btn btn-primary" type="button">Отправить на проверку</button>
+        <div id="save-status" style="display:none">Ответ сохранён</div>
+        <a href="/py/subjects/{{ subject }}/guides" class="btn btn-secondary" style="margin-top:12px">Открыть методички</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var scores = {};
+var MAX_SCORE = 22;
+
+function setScore(key, val, btn) {
+  scores[key] = val;
+  var row = btn.closest('.checklist-row');
+  row.querySelectorAll('.score-btn').forEach(function(b) { b.classList.remove('score-btn-active'); });
+  btn.classList.add('score-btn-active');
+  updateTotal();
+}
+
+function updateTotal() {
+  var total = Object.values(scores).reduce(function(a,b){ return a+b; }, 0);
+  if (!scores['К1']) total -= (scores['К2'] || 0) + (scores['К3'] || 0);
+  if (countWords(document.getElementById('essay-text').value) < 150) total = 0;
+  document.getElementById('total-score').textContent = total;
+  document.getElementById('score-bar').style.width = Math.min(total/MAX_SCORE*100,100) + '%';
+  var verdict = document.getElementById('score-verdict');
+  if (total >= 20) { verdict.textContent = 'Отлично!'; verdict.style.color = 'var(--success)'; }
+  else if (total >= 14) { verdict.textContent = 'Хорошо'; verdict.style.color = 'var(--warning)'; }
+  else { verdict.textContent = 'Нужно доработать'; verdict.style.color = 'var(--error)'; }
+}
+
+// Подсчёт слов
+var textEl = document.getElementById('essay-text');
+var badge = document.getElementById('word-count-badge');
+var warnEl = document.getElementById('word-count-warning');
+var okEl = document.getElementById('word-count-ok');
+
+function countWords(text) {
+  return text.trim() ? text.trim().split(/\s+/).length : 0;
+}
+
+textEl.addEventListener('input', function() {
+  var wc = countWords(this.value);
+  if (document.getElementById('total-score')) updateTotal();
+  badge.textContent = wc + ' слов';
+  if (wc === 0) {
+    badge.style.background = '#f1f5f9'; badge.style.color = '#64748b';
+    warnEl.style.display = 'none'; okEl.style.display = 'none';
+  } else if (wc < 150) {
+    badge.style.background = '#fef2f2'; badge.style.color = '#dc2626';
+    warnEl.style.display = 'block'; okEl.style.display = 'none';
+  } else if (wc < 200) {
+    badge.style.background = '#fef3c7'; badge.style.color = '#92400e';
+    warnEl.style.display = 'none'; okEl.style.display = 'none';
+  } else {
+    badge.style.background = '#dcfce7'; badge.style.color = '#16a34a';
+    warnEl.style.display = 'none'; okEl.style.display = 'block';
+  }
+});
+
+// Отправка сочинения
+var saveBtn = document.getElementById('save-essay-btn');
+if (saveBtn) {
+  saveBtn.addEventListener('click', function() {
+    var text = textEl.value.trim();
+    if (!text) { alert('Напишите сочинение перед отправкой!'); return; }
+    saveBtn.disabled = true; saveBtn.textContent = 'Отправляем...';
+    fetch('/py/subjects/{{ subject }}/essay/submit', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+     body: JSON.stringify({
+       text: text,
+       checklist: scores,
+       prompt_id: document.getElementById('essay-prompt-id') ? document.getElementById('essay-prompt-id').value : null
+     })
+    })
+    .then(r => r.json())
+    .then(function(data) {
+      saveBtn.disabled = false; saveBtn.textContent = 'Отправить на проверку';
+      if (data.ok) {
+        document.getElementById('save-status').style.display = 'block';
+        saveBtn.disabled = true;
+        setTimeout(function() { location.href = '/py/my-essays'; }, 700);
+      } else {
+        alert(data.error || 'Не удалось отправить сочинение');
+      }
+    })
+    .catch(function() {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Повторить отправку';
+      alert('Ошибка соединения. Попробуйте ещё раз.');
+    });
+  });
+}
+</script>
+{% endblock %}

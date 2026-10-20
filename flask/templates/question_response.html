@@ -1,0 +1,23 @@
+{% if q.answer_type == 'short' %}
+<label class="short-answer-wrap">
+  <span>Введите ответ</span>
+  <input class="short-answer-input answer-input"
+         type="text"
+         inputmode="text"
+         maxlength="300"
+         autocomplete="off"
+         data-answer-input
+         data-qid="{{ q.id }}"
+         aria-label="Ответ на задание {{ q.task_number }}">
+</label>
+{% else %}
+<div class="options">
+  {% set letters = ['А', 'Б', 'В', 'Г'] %}
+  {% for i in range(q.options_list|length) %}
+  <div class="option {{ answer_class|default('') }}" data-qid="{{ q.id }}" data-idx="{{ i }}">
+    <div class="option-letter">{{ letters[i] }}</div>
+    <div>{{ q.options_list[i] }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}

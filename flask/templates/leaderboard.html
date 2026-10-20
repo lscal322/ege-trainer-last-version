@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}Рейтинг — ЕГЭ Тренажёр{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="page-title">Таблица лидеров</div>
+  <div class="page-subtitle">Топ студентов по количеству заработанных очков</div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    {% if leaders %}
+    {% for leader in leaders %}
+    <div class="leader-row {% if leader.id == user.id %}current-user-row{% endif %}">
+      <div class="leader-rank {% if loop.index == 1 %}top1{% elif loop.index == 2 %}top2{% elif loop.index == 3 %}top3{% endif %}">
+        {{ loop.index }}
+      </div>
+      <div class="leader-avatar" style="background-color:{{ leader.avatar_color }}" role="img" aria-label="Аватар {{ leader.name }}">
+        {% if leader.avatar_image_mime %}
+        <img src="/py/avatar/{{ leader.id }}" alt="">
+        {% else %}
+        {{ leader.avatar_initial }}
+        {% endif %}
+      </div>
+      <div class="leader-main">
+      <div class="leader-name">
+        {{ leader.name }}
+        {% if leader.id == user.id %}<span style="font-size:0.75rem;color:var(--primary);font-weight:normal"> (Вы)</span>{% endif %}
+      </div>
+      <div class="leader-tests">{{ leader.tests_completed }} тестов</div>
+      </div>
+      <div class="leader-xp">{{ leader.xp }} XP</div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="empty-state">
+      <div class="icon">—</div>
+      <div>Станьте первым в рейтинге!</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

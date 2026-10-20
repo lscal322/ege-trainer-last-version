@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}Главная — ЕГЭ Тренажёр{% endblock %}
+{% block content %}
+<div class="container dashboard-page">
+  <div class="page-title">Выбор предмета</div>
+  <div class="page-subtitle">Выбери предмет, чтобы начать подготовку.</div>
+
+  <div class="grid-2">
+    {% for sid, subj in subjects.items() %}
+    <a href="/py/subjects/{{ sid }}" class="subject-card dashboard-subject-card">
+      <div class="dashboard-subject-heading">
+        <div class="subject-title">{{ subj.title }}</div>
+        <div class="subject-desc">{{ subj.description }}</div>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-bar-fill" style="width:{{ scores.get(sid,0) }}%"></div>
+      </div>
+      <div class="progress-label">
+        <span>Средний балл: <strong>{{ scores.get(sid,0) }}%</strong></span>
+        <span>{{ stats.get(sid,0) }} тестов</span>
+      </div>
+      <div class="dashboard-subject-meta">
+        <span>{{ subj.time_min }} мин</span>
+        <span>{{ question_counts.get(sid, 0) }} заданий</span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+
+  <section class="dashboard-summary" aria-label="Краткая статистика">
+    <div class="dashboard-stat">
+      <strong class="dashboard-stat-value">{{ user.xp }}</strong>
+      <span class="dashboard-stat-label">Опыт XP</span>
+    </div>
+    <div class="dashboard-stat">
+      <strong class="dashboard-stat-value">{{ user.tests_completed }}</strong>
+      <span class="dashboard-stat-label">Тестов пройдено</span>
+    </div>
+    <a href="/py/mistakes" class="dashboard-stat">
+      <strong class="dashboard-stat-value">{{ mistake_count }}</strong>
+      <span class="dashboard-stat-label">Ошибок в банке</span>
+    </a>
+    <a href="/py/analytics" class="dashboard-stat">
+      <strong class="dashboard-stat-value">↗</strong>
+      <span class="dashboard-stat-label">Моя аналитика</span>
+    </a>
+  </section>
+
+  <div class="dashboard-lower">
+    <div class="card dashboard-panel">
+      <h2 class="dashboard-panel-title">Динамика баллов</h2>
+      <canvas id="scoreChart" height="160"></canvas>
+    </div>
+    <div class="card dashboard-panel">
+      <h2 class="dashboard-panel-title">Быстрый старт</h2>
+      <div class="dashboard-quick-start">
+        {% for sid, subj in subjects.items() %}
+        <div class="dashboard-quick-row">
+          <span class="dashboard-quick-subject">{{ subj.title.split('(')[0].strip() }}</span>
+          <a href="/py/subjects/{{ sid }}/exam" class="dashboard-action">Экзамен</a>
+          <a href="/py/subjects/{{ sid }}/drill" class="dashboard-action">Отработка</a>
+          <a href="/py/subjects/{{ sid }}/adaptive" class="dashboard-action">Адаптив</a>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+fetch('/py/api/analytics-data').then(r=>r.json()).then(data=>{
+  var results=data.results||[];
+  if(!results.length) return;
+  var labels=results.slice(0,10).map((_,i)=>'Тест '+(i+1)).reverse();
+  var scores=results.slice(0,10).map(r=>r.score).reverse();
+  var ctx=document.getElementById('scoreChart');
+  if(!ctx) return;
+  new Chart(ctx,{
+    type:'line',
+    data:{labels:labels,datasets:[{label:'Балл %',data:scores,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,0.08)',tension:0.4,fill:true,pointBackgroundColor:'#2563eb',pointRadius:4}]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{callback:v=>v+'%'}}}}
+  });
+});
+</script>
+{% endblock %}

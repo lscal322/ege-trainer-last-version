@@ -1,0 +1,243 @@
+{% extends 'base.html' %}
+{% block title %}Задание №{{ task_num }} — {{ subj.title }}{% endblock %}
+{% block content %}
+<div class="container">
+  <a href="/py/subjects/{{ subject }}/drill" class="back-link">← Выбор задания</a>
+  <div class="page-title">Набивка руки: Задание №{{ task_num }}</div>
+  <div class="page-subtitle">{{ subj.title }} • Решай до 100% правильных подряд</div>
+
+  <div class="drill-progress-bar" style="margin-bottom:24px">
+    <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:var(--text-muted);margin-bottom:6px">
+      <span>Прогресс сессии</span>
+      <span><span id="drill-correct">0</span> правильных подряд / цель: 3</span>
+    </div>
+    <div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden">
+      <div id="drill-progress" style="height:100%;background:linear-gradient(90deg,var(--success),var(--secondary));border-radius:5px;width:0%"></div>
+    </div>
+  </div>
+
+  {% if questions %}
+  <div id="drill-form" data-subject="{{ subject }}" data-task="{{ task_num }}" data-total="{{ questions|length }}">
+    <div id="drill-question-container">
+      {% set q = questions[0] %}
+      <div class="quiz-question" id="current-drill-q" data-qid="{{ q.id }}">
+        <div class="question-header">
+          <div class="question-number">Задание №{{ task_num }}</div>
+          <span id="drill-counter" style="color:var(--text-muted);font-size:0.82rem">Вопрос 1 из {{ questions|length }}</span>
+        </div>
+        <div class="question-text" id="drill-q-text">{{ q.text }}</div>
+        <div class="options" id="drill-options"></div>
+        <div class="explanation" id="drill-explanation"></div>
+        <div id="drill-status" style="font-size:0.85rem;color:var(--text-muted);margin-top:8px" aria-live="polite"></div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" id="drill-retry" class="btn btn-secondary btn-sm" style="display:none">Повторить отправку</button>
+          <button type="button" id="drill-next" class="btn btn-primary btn-sm" style="display:none">Следующий вопрос</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="drill-finish" style="display:none;text-align:center;padding:40px;background:white;border-radius:var(--radius);border:2px solid var(--success)">
+      <div id="drill-finish-title" style="font-size:1.4rem;font-weight:800;color:var(--success);margin-bottom:8px">Отличная работа!</div>
+      <div id="drill-finish-text" style="color:var(--text-muted);margin-bottom:8px">Вы успешно отработали задание №{{ task_num }}</div>
+      <div id="drill-finish-xp" style="color:var(--text-muted);margin-bottom:24px"></div>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+        <a href="/py/subjects/{{ subject }}/drill/{{ task_num }}" class="btn btn-primary">Ещё раз</a>
+        <a href="/py/subjects/{{ subject }}/drill" class="btn btn-secondary">Другое задание</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    var allQuestions = {{ questions | tojson }};
+    var PRACTICE_ID = {{ practice_id | tojson }};
+    var SUBJECT = {{ subject | tojson }};
+    var STREAK_GOAL = 3;
+    var letters = ['А','Б','В','Г'];
+    var currentIdx = 0, correctStreak = 0, bestStreak = 0, totalXp = 0, correctTotal = 0;
+    var saving = false, answeredSet = {}, startedAt = Date.now(), pending = null;
+    var statusEl = document.getElementById('drill-status');
+    var retryBtn = document.getElementById('drill-retry');
+    var nextBtn = document.getElementById('drill-next');
+
+    function line(text, color) {
+      var s = document.createElement('span');
+      s.style.display = 'block'; s.style.marginTop = '4px';
+      if (color) s.style.color = color;
+      s.textContent = text;
+      return s;
+    }
+
+    function loadQuestion(idx) {
+      currentIdx = idx;
+      var q = allQuestions[idx];
+      document.getElementById('drill-counter').textContent = 'Вопрос ' + (idx + 1) + ' из ' + allQuestions.length;
+      document.getElementById('drill-q-text').textContent = q.text;
+      var optsEl = document.getElementById('drill-options');
+      optsEl.textContent = '';
+      if (q.answer_type === 'short') {
+        var answerLabel = document.createElement('label');
+        answerLabel.className = 'short-answer-wrap';
+        answerLabel.innerHTML = '<span>Введите ответ</span>';
+        var answerInput = document.createElement('input');
+        answerInput.className = 'short-answer-input';
+        answerInput.type = 'text';
+        answerInput.maxLength = 300;
+        answerInput.autocomplete = 'off';
+        answerInput.setAttribute('aria-label', 'Ваш ответ');
+        answerInput.addEventListener('keydown', function (event) {
+          if (event.key === 'Enter') { event.preventDefault(); handleAnswer(answerInput.value); }
+        });
+        answerLabel.appendChild(answerInput);
+        var answerButton = document.createElement('button');
+        answerButton.type = 'button';
+        answerButton.className = 'btn btn-primary btn-sm';
+        answerButton.textContent = 'Проверить ответ';
+        answerButton.addEventListener('click', function () { handleAnswer(answerInput.value); });
+        optsEl.appendChild(answerLabel);
+        optsEl.appendChild(answerButton);
+      } else {
+        (q.options_list || []).forEach(function (opt, i) {
+          var div = document.createElement('div');
+          div.className = 'option drill-option';
+          div.dataset.idx = i;
+          var l = document.createElement('div'); l.className = 'option-letter'; l.textContent = letters[i] || String(i + 1);
+          var tx = document.createElement('div'); tx.textContent = opt;
+          div.appendChild(l); div.appendChild(tx);
+          div.addEventListener('click', function () { handleAnswer(i); });
+          optsEl.appendChild(div);
+        });
+      }
+      var expEl = document.getElementById('drill-explanation');
+      expEl.style.display = 'none'; expEl.textContent = '';
+      statusEl.textContent = '';
+      retryBtn.style.display = 'none'; nextBtn.style.display = 'none';
+      var block = document.getElementById('current-drill-q');
+      block.dataset.qid = q.id;
+      block.className = 'quiz-question';
+      startedAt = Date.now();
+    }
+
+    function updateProgress() {
+      document.getElementById('drill-progress').style.width = Math.min(correctStreak / STREAK_GOAL * 100, 100) + '%';
+      document.getElementById('drill-correct').textContent = correctStreak;
+    }
+
+    function finish(success) {
+      document.getElementById('current-drill-q').style.display = 'none';
+      document.getElementById('drill-finish').style.display = 'block';
+      if (!success) {
+        document.getElementById('drill-finish-title').textContent = 'Вопросы закончились';
+        document.getElementById('drill-finish-text').textContent = 'Правильных ответов: ' + correctTotal + ' из ' + allQuestions.length + '. Лучшая серия: ' + bestStreak + '. Вернитесь к выбору задания или начните заново.';
+      }
+      document.getElementById('drill-finish-xp').textContent = 'Заработано за сессию: +' + totalXp + ' XP';
+    }
+
+    function goNext() {
+      if (correctStreak >= STREAK_GOAL) { finish(true); return; }
+      if (currentIdx + 1 >= allQuestions.length) { finish(false); return; }
+      loadQuestion(currentIdx + 1);
+    }
+    nextBtn.addEventListener('click', goNext);
+
+    function setOptionsDisabled(on) {
+      document.querySelectorAll('#drill-options .drill-option').forEach(function (o) { o.classList.toggle('disabled', on); });
+      document.querySelectorAll('#drill-options input, #drill-options button').forEach(function (control) { control.disabled = on; });
+    }
+
+    function handleAnswer(answer) {
+      var q = allQuestions[currentIdx];
+      if (saving || answeredSet[q.id]) return;
+      if (q.answer_type === 'short' && !String(answer).trim()) {
+        statusEl.textContent = 'Сначала введите ответ.';
+        return;
+      }
+      pending = {
+        practice_id: PRACTICE_ID,
+        question_id: q.id,
+        time_sec: Math.max(0, Math.round((Date.now() - startedAt) / 1000))
+      };
+      if (q.answer_type === 'short') pending.answer_text = String(answer);
+      else pending.answer_idx = answer;
+      var opts = document.querySelectorAll('#drill-options .drill-option');
+      opts.forEach(function (o) { o.classList.remove('selected'); });
+      if (q.answer_type !== 'short' && opts[answer]) opts[answer].classList.add('selected');
+      send();
+    }
+
+    function send() {
+      if (!pending || saving) return;
+      var p = pending;
+      var q = allQuestions[currentIdx];
+      saving = true;
+      setOptionsDisabled(true);
+      retryBtn.style.display = 'none';
+      statusEl.textContent = 'Сохраняем ответ...';
+      fetch('/py/subjects/' + encodeURIComponent(SUBJECT) + '/drill/answer', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(p)
+      })
+      .then(function (r) {
+        return r.json().catch(function () { return { error: 'Некорректный ответ сервера (' + r.status + ')' }; })
+          .then(function (d) { if (!r.ok && !d.error) d.error = 'Код ' + r.status; return d; });
+      })
+      .then(function (data) {
+        if (data.error) {
+          saving = false;
+          fail('Ошибка: ' + data.error);
+          return;
+        }
+        statusEl.textContent = '';
+        var block = document.getElementById('current-drill-q');
+        var opts = document.querySelectorAll('#drill-options .drill-option');
+        if (q.answer_type !== 'short' && opts[data.correct_index]) opts[data.correct_index].classList.add('correct-answer');
+        var expEl = document.getElementById('drill-explanation');
+        expEl.textContent = '';
+        if (data.correct) {
+          block.classList.add('correct'); correctStreak++; correctTotal++;
+        } else {
+          if (q.answer_type !== 'short' && opts[p.answer_idx]) opts[p.answer_idx].classList.add('wrong-answer');
+          block.classList.add('wrong'); correctStreak = 0;
+          if (data.explanation) expEl.appendChild(document.createTextNode(String(data.explanation)));
+          if (data.wrong_explanation) expEl.appendChild(line('Ваш ответ: ' + data.wrong_explanation, '#dc2626'));
+          if (q.answer_type === 'short') {
+            expEl.appendChild(line('Ваш ответ: ' + (data.submitted_answer_text || ''), '#dc2626'));
+            expEl.appendChild(line('Правильный ответ: ' + (data.correct_answer_text || ''), '#16a34a'));
+          } else if (data.correct_option_text) expEl.appendChild(line('Правильно: ' + data.correct_option_text, '#16a34a'));
+          if (expEl.childNodes.length) expEl.style.display = 'block';
+        }
+        bestStreak = Math.max(bestStreak, correctStreak);
+        totalXp += Number(data.xp_gain) || 0;
+        if (data.xp_gain) statusEl.textContent = '+' + data.xp_gain + ' XP';
+        updateProgress();
+        answeredSet[p.question_id] = true;
+        pending = null;
+        saving = false;
+        if (data.correct) setTimeout(goNext, 700);
+        else { nextBtn.textContent = (correctStreak < STREAK_GOAL && currentIdx + 1 >= allQuestions.length) ? 'Завершить' : 'Следующий вопрос'; nextBtn.style.display = ''; }
+      })
+      .catch(function (error) {
+        saving = false;
+        console.error('Drill answer request or rendering failed:', error);
+        fail('Не удалось подтвердить ответ. Нажмите «Повторить отправку» — повтор не засчитает его дважды.');
+      });
+    }
+
+    function fail(msg) {
+      statusEl.textContent = msg;
+      retryBtn.style.display = '';
+      retryBtn.textContent = 'Повторить отправку';
+      setOptionsDisabled(true);
+    }
+    retryBtn.addEventListener('click', send);
+
+    loadQuestion(0);
+  })();
+  </script>
+
+  {% else %}
+  <div class="empty-state"><div class="icon">—</div><div>Вопросы для задания №{{ task_num }} не найдены</div></div>
+  {% endif %}
+</div>
+{% endblock %}

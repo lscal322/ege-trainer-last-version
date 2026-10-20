@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}Слабое место — {{ subj.title }}{% endblock %}
+{% block content %}
+<div class="container">
+  <a href="/py/subjects/{{ subject }}" class="back-link">← {{ subj.title }}</a>
+  <div class="page-title">Режим «Слабое место»</div>
+  <div class="page-subtitle">Система подобрала задания по вашим слабым темам</div>
+
+  {% if weak_tasks %}
+  <div class="card" style="margin-bottom:24px;padding:16px">
+    <div style="font-weight:800;margin-bottom:10px;font-size:0.9rem">Выявленные слабые темы:</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      {% for wt in weak_tasks %}
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:6px 12px;font-size:0.82rem">
+        <span style="font-weight:700;color:var(--error)">Задание №{{ wt.task_number }}</span>
+        <span style="color:var(--text-muted)"> — {{ wt.section }}</span>
+        <span style="color:var(--error);margin-left:4px">({{ wt.wrong }}/{{ wt.total }} ошибок)</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <div class="card" style="margin-bottom:24px;padding:16px;background:#f0fdf4;border-color:#bbf7d0">
+    <div style="color:var(--success);font-weight:600">Данных для анализа пока нет. Система выбрала случайные задания. Пройдите несколько тестов для персонализации.</div>
+  </div>
+  {% endif %}
+
+  {% if questions %}
+  <div id="quiz-form" data-practice-id="{{ practice_id }}" data-total="{{ questions|length }}" data-subject="{{ subject }}" data-part="part1" data-mode="adaptive">
+    {% for q in questions %}
+    <div class="quiz-question" data-qid-block="{{ q.id }}" data-answer-type="{{ q.answer_type }}">
+      <div class="question-header">
+        <div class="question-number">Задание №{{ q.task_number }} — {{ q.section }}</div>
+        <span class="badge {% if q.difficulty in ('profile', 'part2_bank') %}badge-orange{% else %}badge-blue{% endif %}">
+          {{ 'Профиль' if q.difficulty in ('profile', 'part2_bank') else 'База' }}
+        </span>
+      </div>
+      <div class="question-text">{{ q.text }}</div>
+      {% include 'question_response.html' %}
+      <div class="explanation" data-wrong-expl='{{ (q.wrong_expl or {}) | tojson | forceescape }}'></div>
+    </div>
+    {% endfor %}
+
+    <div class="quiz-controls">
+      <div style="color:var(--text-muted);font-size:0.9rem"><span id="answered-count">0</span>/{{ questions|length }} отвечено</div>
+      <button id="submit-quiz" class="btn btn-primary btn-lg">Проверить</button>
+    </div>
+
+    <div id="quiz-result" class="quiz-result">
+      <div class="result-score great">—</div>
+      <div style="font-size:1.1rem;font-weight:700;margin-bottom:8px">Результат адаптивного теста</div>
+      <div style="color:var(--text-muted);margin-bottom:16px">Правильных: <span class="result-correct">—</span></div>
+      <div class="xp-earned">Заработано <span class="result-xp">0 XP</span></div>
+      <div class="result-mistakes-notice" style="display:none;margin:16px 0;padding:12px;background:#fef2f2;border-radius:8px;font-size:0.88rem;color:#991b1b">
+        Ошибки добавлены в <a href="/py/mistakes" style="color:#991b1b;font-weight:700">Банк ошибок</a>
+      </div>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+        <a href="/py/subjects/{{ subject }}/adaptive" class="btn btn-primary">Ещё адаптив</a>
+        <a href="/py/subjects/{{ subject }}" class="btn btn-secondary">← К предмету</a>
+        <a href="/py/analytics" class="btn btn-teal">Аналитика</a>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="empty-state"><div class="icon">—</div><div>Вопросы не найдены</div></div>
+  {% endif %}
+</div>
+{% endblock %}

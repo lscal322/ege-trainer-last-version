@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}Методички — {{ subj.title }}{% endblock %}
+{% block content %}
+<div class="container">
+  <a href="/py/subjects/{{ subject }}" class="back-link">← {{ subj.title }}</a>
+  <div class="page-title">Методички</div>
+  <div class="page-subtitle">{{ subj.title }} — шпаргалки, алгоритмы и правила</div>
+
+  {% if grouped %}
+    {% for category, items in grouped.items() %}
+    <div style="margin-bottom:32px">
+      <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:12px;padding-left:4px">
+        {{ category }}
+      </div>
+      {% for item in items %}
+      <div class="guide-card" style="margin-bottom:12px">
+        <div style="font-size:1.05rem;font-weight:800;margin-bottom:10px">{{ item.title }}</div>
+        <pre class="guide-content">{{ item.content }}</pre>
+        {% if item.url %}
+        <div style="margin-top:10px">
+          <a href="{{ item.url }}" target="_blank" style="font-size:0.85rem;color:var(--primary)">Подробнее →</a>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  {% else %}
+  <div class="empty-state">
+    <div class="icon">—</div>
+    <div>Методические материалы пока не добавлены</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

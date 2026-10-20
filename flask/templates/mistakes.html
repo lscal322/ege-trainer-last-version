@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block title %}Мои ошибки — ЕГЭ Тренажёр{% endblock %}
+{% block content %}
+<div class="container">
+  <a href="/py/" class="back-link">← Главная</a>
+  <div class="page-title">Банк ошибок</div>
+  <div class="page-subtitle">Все задания, где был дан неверный ответ. Разберите каждое и устраните пробел.</div>
+
+  {% if mistakes %}
+  <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap" id="subject-filters">
+    <button class="tab-btn active" data-filter="all">Все ({{ mistakes|length }})</button>
+    {% for sid, subj in subjects.items() %}
+    {% set cnt = mistakes | selectattr('subject','eq',sid) | list | length %}
+    {% if cnt > 0 %}
+    <button class="tab-btn" data-filter="{{ sid }}">{{ subj.icon }} {{ subj.title.split('(')[0].strip() }} ({{ cnt }})</button>
+    {% endif %}
+    {% endfor %}
+  </div>
+
+  <div id="mistakes-list">
+    {% for m in mistakes %}
+    <div class="quiz-question mistake-item" data-subject="{{ m.subject }}" style="border-left:3px solid var(--error)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+        <div>
+          <div class="question-number">
+            {{ m.subj_title }} · Задание №{{ m.task_number }}
+            {% if m.section %} — {{ m.section }}{% endif %}
+          </div>
+          <div style="font-size:0.78rem;color:var(--text-muted)">
+            Ошибок: {{ m.review_count + 1 }}
+          </div>
+        </div>
+        <button class="btn btn-sm" style="background:#fef2f2;color:var(--error);border:1px solid #fecaca;white-space:nowrap" onclick="removeMistake({{ m.id }}, this)">
+          Разобрал — убрать
+        </button>
+      </div>
+
+      <div class="question-text">{{ m.text }}</div>
+
+      {% if m.answer_type == 'short' %}
+      <div class="short-answer-review">
+        <div><strong>Ваш ответ:</strong> {{ m.wrong_answer_text or 'Нет ответа' }}</div>
+        <div><strong>Правильный ответ:</strong> {{ m.correct_answer }}</div>
+      </div>
+      {% else %}
+      <div class="options" style="pointer-events:none">
+        {% set letters = ['А','Б','В','Г'] %}
+        {% for i in range(m.options_list|length) %}
+        <div class="option
+          {% if i == m.correct_index %}correct-answer
+          {% elif i == m.wrong_answer_idx %}wrong-answer
+          {% endif %}" style="cursor:default">
+          <div class="option-letter">{{ letters[i] }}</div>
+          <div>{{ m.options_list[i] }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <div style="margin-top:12px">
+        {% if m.wrong_expl.get(m.wrong_answer_idx|string) %}
+        <div style="padding:10px 14px;background:#fef2f2;border-left:3px solid var(--error);border-radius:0 6px 6px 0;font-size:0.88rem;color:#991b1b;margin-bottom:8px">
+          Ваш ответ ({{ letters[m.wrong_answer_idx] }}): {{ m.wrong_expl[m.wrong_answer_idx|string] }}
+        </div>
+        {% endif %}
+        {% if m.explanation %}
+        <div style="padding:10px 14px;background:#f0fdf4;border-left:3px solid var(--success);border-radius:0 6px 6px 0;font-size:0.88rem;color:#166534">
+          Правильно: {{ m.explanation }}
+        </div>
+        {% endif %}
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+        <a href="/py/subjects/{{ m.subject }}/drill/{{ m.task_number }}" class="btn btn-sm btn-secondary">Отработать задание №{{ m.task_number }}</a>
+        <a href="/py/subjects/{{ m.subject }}/adaptive" class="btn btn-sm" style="background:#f3e8ff;color:#7c3aed;border:none">Адаптивный тест</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="empty-state" style="padding:80px 20px">
+    <div class="icon">—</div>
+    <div style="font-size:1.1rem;font-weight:700;margin-bottom:8px">Ошибок нет!</div>
+    <div style="color:var(--text-muted);margin-bottom:24px">Пройдите тесты, и неверные ответы появятся здесь для разбора.</div>
+    <a href="/py/" class="btn btn-primary">Перейти к заданиям</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function removeMistake(mbId, btn) {
+  if (!confirm('Убрать это задание из банка ошибок?')) return;
+  fetch('/py/api/remove-mistake/' + mbId, {method:'POST'})
+    .then(r => r.json())
+    .then(function(data) {
+      if (data.ok) {
+        var item = btn.closest('.mistake-item');
+        item.style.opacity = '0';
+        setTimeout(function() { item.remove(); }, 200);
+      }
+    });
+}
+
+// Фильтр по предмету
+document.querySelectorAll('[data-filter]').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    var filter = this.dataset.filter;
+    document.querySelectorAll('.mistake-item').forEach(function(item) {
+      item.style.display = (filter === 'all' || item.dataset.subject === filter) ? '' : 'none';
+    });
+  });
+});
+</script>
+{% endblock %}

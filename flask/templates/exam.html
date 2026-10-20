@@ -1,0 +1,274 @@
+{% extends 'base.html' %}
+{% block title %}Экзамен — {{ subj.title }}{% endblock %}
+{% block content %}
+<div id="anticheat-overlay" style="display:none;position:fixed;inset:0;background:rgba(220,38,38,0.95);z-index:9999;display:none;align-items:center;justify-content:center;flex-direction:column;color:white;text-align:center;padding:40px">
+  <div style="font-size:1.5rem;font-weight:800;margin-bottom:12px">Вы покинули страницу экзамена!</div>
+  <div style="font-size:1rem;opacity:0.9;margin-bottom:24px">На реальном ЕГЭ это было бы нарушением. Вернитесь к выполнению заданий.</div>
+  <button onclick="closeOverlay()" class="btn btn-lg" style="background:white;color:var(--error);font-weight:700">Вернуться к экзамену</button>
+  <div id="anticheat-count" style="margin-top:16px;opacity:0.7;font-size:0.9rem"></div>
+</div>
+
+<div class="exam-header">
+  <div class="exam-info">
+    <span style="font-weight:700">{{ subj.icon }} {{ subj.title }}</span>
+    <span style="color:rgba(255,255,255,0.7);font-size:0.85rem">Режим «Экзамен»</span>
+  </div>
+  <div class="exam-timer" id="exam-timer">{% set _rs = (remaining_sec if remaining_sec is defined and remaining_sec is not none else time_min * 60)|int %}{{ '%d:%02d'|format(_rs // 60, _rs % 60) }}</div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <span style="color:rgba(255,255,255,0.8);font-size:0.85rem"><span id="answered-exam">0</span>/{{ questions|length }} отв.</span>
+    <button id="finish-exam-btn" class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.4)">Завершить досрочно</button>
+  </div>
+</div>
+
+<div class="container" style="padding-top:20px">
+  {% if questions %}
+  <div id="exam-form" data-total="{{ questions|length }}" data-subject="{{ subject }}" data-time="{{ time_min }}" data-sess="{{ sess_id }}">
+    {% for q in questions %}
+    <div class="quiz-question" data-qid-block="{{ q.id }}" data-answer-type="{{ q.answer_type }}">
+      <div class="question-header">
+        <div class="question-number">Задание {{ q.task_number }} — {{ q.section }}</div>
+        <span class="badge {% if q.difficulty in ('profile', 'part2_bank') %}badge-orange{% else %}badge-blue{% endif %}">
+          {{ 'Профиль' if q.difficulty in ('profile', 'part2_bank') else 'База' }}
+        </span>
+      </div>
+      <div class="question-text">{{ q.text }}</div>
+      {% set answer_class = 'exam-option' %}
+      {% include 'question_response.html' %}
+    </div>
+    {% endfor %}
+
+    <div class="quiz-controls">
+      <div style="color:var(--text-muted);font-size:0.9rem">Ответьте на все задания и нажмите «Завершить»</div>
+      <button id="submit-exam" class="btn btn-primary btn-lg" style="background:var(--error)">Завершить экзамен</button>
+    </div>
+
+    <div id="exam-result" class="quiz-result" style="display:none">
+      <div class="result-score">—</div>
+      <div style="font-size:1.2rem;font-weight:800;margin-bottom:8px">Результат экзамена</div>
+      <div style="color:var(--text-muted);margin-bottom:16px">Правильных: <span class="result-correct">—</span></div>
+      <div class="xp-earned">Заработано <span class="result-xp">0 XP</span></div>
+      <div id="slow-tasks-notice" style="display:none;margin:16px 0;padding:12px;background:#fef3c7;border-radius:8px;font-size:0.88rem;color:#92400e"></div>
+      <div id="violations-notice" style="margin:16px 0;padding:12px;background:#fef2f2;border-radius:8px;font-size:0.88rem;color:#991b1b;display:none"></div>
+      <div style="margin-bottom:20px;font-size:0.88rem;color:var(--text-muted)">Неверные ответы добавлены в <a href="/py/mistakes" style="color:var(--error);font-weight:700">Банк ошибок</a></div>
+      <div id="exam-answers-breakdown" style="text-align:left;margin-bottom:24px"></div>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+        <a href="/py/subjects/{{ subject }}/exam" class="btn btn-primary">Новый экзамен</a>
+        <a href="/py/analytics" class="btn btn-secondary">Аналитика</a>
+        <a href="/py/mistakes" class="btn" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca">Мои ошибки</a>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="empty-state"><div class="icon">—</div><div>Вопросы не найдены</div></div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var EXAM_REMAINING_SEC = {{ (remaining_sec if remaining_sec is defined and remaining_sec is not none else time_min * 60) | int | tojson }};
+var violations = 0;
+var examFinished = false;
+var examSubmitting = false;
+
+function closeOverlay() {
+  document.getElementById('anticheat-overlay').style.display = 'none';
+}
+
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden && !examFinished) {
+    violations++;
+    document.getElementById('anticheat-overlay').style.display = 'flex';
+    var cnt = document.getElementById('anticheat-count');
+    if (cnt) cnt.textContent = 'Нарушений: ' + violations;
+  }
+});
+
+window.addEventListener('blur', function() {
+  if (!examFinished && violations === 0) {
+    violations++;
+    document.getElementById('anticheat-overlay').style.display = 'flex';
+  }
+});
+
+var examAnswers = {};
+var examTimes = {};
+var questionStarts = {};
+
+var form = document.getElementById('exam-form');
+if (form) {
+  var subject = form.dataset.subject;
+  var sessId = parseInt(form.dataset.sess || '0', 10);
+  var submitBtnEl = document.getElementById('submit-exam');
+  var finishBtnEl = document.getElementById('finish-exam-btn');
+  var submitLabel = submitBtnEl.textContent;
+  var allQids = [];
+  form.querySelectorAll('.quiz-question').forEach(function(b) { if (b.dataset.qidBlock) allQids.push(b.dataset.qidBlock); });
+  function updateAnsweredCount() {
+    var answered = Object.keys(examAnswers).filter(function(id) {
+      return String(examAnswers[id]).trim() !== '';
+    }).length;
+    document.getElementById('answered-exam').textContent = answered;
+  }
+
+  function div(style, text) {
+    var d = document.createElement('div');
+    d.setAttribute('style', style);
+    if (text !== undefined) d.textContent = text;
+    return d;
+  }
+
+  form.querySelectorAll('.exam-option').forEach(function(opt) {
+    opt.addEventListener('click', function() {
+      if (examFinished || examSubmitting) return;
+      var qid = this.dataset.qid;
+      if (!questionStarts[qid]) questionStarts[qid] = Date.now();
+      examAnswers[qid] = parseInt(this.dataset.idx, 10);
+      examTimes[qid] = Math.max(0, Math.round((Date.now() - questionStarts[qid]) / 1000));
+      updateAnsweredCount();
+      this.closest('.quiz-question').querySelectorAll('.exam-option').forEach(function(o) { o.classList.remove('selected'); });
+      this.classList.add('selected');
+    });
+  });
+  form.querySelectorAll('[data-answer-input]').forEach(function(input) {
+    input.addEventListener('input', function() {
+      if (examFinished || examSubmitting) return;
+      var qid = this.dataset.qid;
+      if (!questionStarts[qid]) questionStarts[qid] = Date.now();
+      examAnswers[qid] = this.value;
+      examTimes[qid] = Math.max(0, Math.round((Date.now() - questionStarts[qid]) / 1000));
+      updateAnsweredCount();
+    });
+  });
+
+  function resetButtons(msg) {
+    examSubmitting = false;
+    submitBtnEl.disabled = false;
+    submitBtnEl.textContent = 'Повторить отправку';
+    if (finishBtnEl) finishBtnEl.disabled = false;
+    alert(msg);
+  }
+
+  function submitExam() {
+    if (examFinished || examSubmitting) return;
+    examSubmitting = true;
+    submitBtnEl.disabled = true;
+    submitBtnEl.textContent = 'Отправляем...';
+    if (finishBtnEl) finishBtnEl.disabled = true;
+    var payload = {};
+    allQids.forEach(function(qid) {
+      var input = form.querySelector('[data-answer-input][data-qid="' + qid + '"]');
+      payload[qid] = input ? (examAnswers[qid] || '') : (examAnswers[qid] !== undefined ? examAnswers[qid] : -1);
+    });
+
+    fetch('/py/subjects/' + encodeURIComponent(subject) + '/exam/submit', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({answers: payload, sess_id: sessId, times: examTimes})
+    })
+    .then(function(r) {
+      return r.json().catch(function() { return {error: 'Некорректный ответ сервера (' + r.status + ')'}; })
+        .then(function(d) { if (!r.ok && !d.error) d.error = 'Код ' + r.status; return d; });
+    })
+    .then(function(data) {
+      if (data.error) { resetButtons('Ошибка: ' + data.error); return; }
+      examFinished = true;
+      examSubmitting = false;
+      stopTimer();
+      form.querySelectorAll('.exam-option').forEach(function(o) { o.classList.add('disabled'); });
+      form.querySelectorAll('[data-answer-input]').forEach(function(input) {
+        input.disabled = true;
+        var result = (data.results || []).find(function(item) { return String(item.id) === input.dataset.qid; });
+        if (result) input.classList.add(result.correct ? 'correct-answer' : 'wrong-answer');
+      });
+      var res = document.getElementById('exam-result');
+      var sc = res.querySelector('.result-score');
+      sc.textContent = data.score + '%';
+      sc.className = 'result-score ' + (data.score >= 80 ? 'great' : data.score >= 50 ? 'ok' : 'poor');
+      res.querySelector('.result-correct').textContent = data.correct + ' из ' + data.total;
+      res.querySelector('.result-xp').textContent = '+' + (data.xp_gain || 0) + ' XP';
+
+      if (violations > 0) {
+        var vn = document.getElementById('violations-notice');
+        vn.style.display = 'block';
+        vn.textContent = 'Вы покидали страницу ' + violations + ' раз(а). На реальном экзамене это нарушение.';
+      }
+      if (data.slow_tasks && data.slow_tasks.length) {
+        var sn = document.getElementById('slow-tasks-notice');
+        sn.style.display = 'block';
+        var uniq = data.slow_tasks.filter(function(n, i, a) { return a.indexOf(n) === i; });
+        sn.textContent = 'Вы тратили много времени на задания: ' + uniq.map(function(n) { return '№' + n; }).join(', ');
+      }
+
+      var breakdown = document.getElementById('exam-answers-breakdown');
+      if (breakdown && data.results) {
+        breakdown.textContent = '';
+        breakdown.appendChild(div('font-weight:800;margin-bottom:12px', 'Разбор ответов:'));
+        data.results.forEach(function(r) {
+          var color = r.correct ? 'var(--success)' : 'var(--error)';
+          var card = div('padding:10px;border-radius:8px;border:1px solid var(--border);margin-bottom:8px;border-left:3px solid ' + color);
+          card.appendChild(div('font-weight:700;margin-bottom:4px', (r.correct ? '+' : '×') + ' Задание №' + r.task_number));
+          if (r.answer_type === 'short') {
+            if (r.submitted_answer_text) card.appendChild(div('font-size:0.82rem;color:' + (r.correct ? 'var(--success)' : 'var(--error)'), 'Ваш ответ: ' + r.submitted_answer_text));
+            if (!r.correct) card.appendChild(div('font-size:0.85rem;color:var(--success);margin-bottom:4px', 'Правильно: ' + r.correct_answer_text));
+          } else if (!r.correct) {
+            if (r.correct_option_text) card.appendChild(div('font-size:0.85rem;color:var(--success);margin-bottom:4px', 'Правильно: ' + r.correct_option_text));
+            if (payload[r.id] === -1) card.appendChild(div('font-size:0.82rem;color:var(--error)', 'Нет ответа'));
+            else if (r.wrong_explanation) card.appendChild(div('font-size:0.82rem;color:var(--error)', 'Ваш ответ: ' + r.wrong_explanation));
+          }
+          if (r.explanation) card.appendChild(div('font-size:0.82rem;color:var(--text-muted);margin-top:4px', String(r.explanation)));
+          breakdown.appendChild(card);
+        });
+      }
+
+      res.style.display = 'block';
+      res.scrollIntoView({behavior: 'smooth'});
+      submitBtnEl.textContent = submitLabel;
+      submitBtnEl.style.display = 'none';
+      if (finishBtnEl) finishBtnEl.style.display = 'none';
+    })
+    .catch(function() { resetButtons('Ошибка соединения. Ответы сохранены на странице, нажмите «Повторить отправку».'); });
+  }
+
+  submitBtnEl.addEventListener('click', submitExam);
+  finishBtnEl.addEventListener('click', function() {
+    if (confirm('Завершить экзамен досрочно?')) submitExam();
+  });
+
+  // Таймер
+  var deadline = Date.now() + Math.max(0, EXAM_REMAINING_SEC) * 1000;
+  var timerEl = document.getElementById('exam-timer');
+  var timerInterval = null;
+  var timeUp = false;
+
+  function stopTimer() { if (timerInterval) clearInterval(timerInterval); timerInterval = null; }
+
+  function updateTimer() {
+    var left = Math.max(0, Math.round((deadline - Date.now()) / 1000));
+    if (left <= 0) {
+      timerEl.textContent = '0:00';
+      timerEl.style.color = '#fca5a5';
+      if (!timeUp) { timeUp = true; stopTimer(); if (!examFinished) submitExam(); }
+      return;
+    }
+    var m = Math.floor(left / 60), s = left % 60;
+    timerEl.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+    if (left <= 300) timerEl.style.color = '#fca5a5';
+    else if (left <= 600) timerEl.style.color = '#fde68a';
+  }
+  updateTimer();
+  if (!timeUp) timerInterval = setInterval(updateTimer, 1000);
+
+  // Учёт времени ответа
+  if ('IntersectionObserver' in window) {
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) {
+        var qid = e.target.dataset.qidBlock;
+        if (e.isIntersecting && qid && !questionStarts[qid]) questionStarts[qid] = Date.now();
+      });
+    });
+    form.querySelectorAll('.quiz-question').forEach(function(b) { observer.observe(b); });
+  }
+}
+</script>
+{% endblock %}

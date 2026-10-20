@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}Теория — {{ subj.title }}{% endblock %}
+{% block content %}
+<div class="container">
+  <a href="/py/subjects/{{ subject }}" class="back-link">← {{ subj.title }}</a>
+  <div class="page-title">Теория</div>
+  <div class="page-subtitle">{{ subj.title }} — конспекты по темам</div>
+
+  {% if sections %}
+  {% for section in sections %}
+  <div class="theory-section">
+    <div class="theory-section-header">
+      <span>{{ section.order_index }}. {{ section.title }}</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="theory-section-body">
+      <pre class="theory-content">{{ section.content }}</pre>
+    </div>
+  </div>
+  {% endfor %}
+  {% else %}
+  <div class="empty-state">
+    <div class="icon">—</div>
+    <div>Теоретические материалы пока не добавлены</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

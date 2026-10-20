@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% block title %}Банк аргументов и справочник — ЕГЭ Тренажёр{% endblock %}
+{% block content %}
+<div class="container argument-bank">
+  <a href="/py/" class="back-link">← Главная</a>
+  <div class="page-title">Банк аргументов и клише</div>
+  <div class="page-subtitle">Памятка к сочинению по русскому языку, примеры из литературы и справочник профильной математики</div>
+
+  <aside class="argument-intro" aria-label="Важная информация о сочинении ЕГЭ">
+    <div class="argument-intro-title">Задание 27: главное на 2026 год</div>
+    <p>Проблема уже указана в формулировке задания. Для комментария нужны два примера из исходного текста, пояснение каждого и объяснение смысловой связи между ними. Литературный пример относится к обоснованию вашей собственной позиции, а не заменяет комментарий к исходному тексту.</p>
+    <div class="argument-metrics">
+      <span><strong>150 слов</strong> — минимальный объём</span>
+      <span><strong>22 балла</strong> — максимум за сочинение</span>
+      <span><strong>К1–К10</strong> — критерии оценивания</span>
+    </div>
+  </aside>
+
+  <div class="section-tabs argument-tabs" id="arg-tabs" role="tablist" aria-label="Разделы банка">
+    <button class="tab-btn active" id="tab-cliches" role="tab" aria-selected="true" aria-controls="panel-cliches" data-tab="cliches">Речевые клише</button>
+    <button class="tab-btn" id="tab-literature" role="tab" aria-selected="false" aria-controls="panel-literature" data-tab="literature">Литература по темам</button>
+    <button class="tab-btn" id="tab-problems" role="tab" aria-selected="false" aria-controls="panel-problems" data-tab="problems">Проблемы + аргументы</button>
+    <button class="tab-btn" id="tab-math-reference" role="tab" aria-selected="false" aria-controls="panel-math-reference" data-tab="math-reference">Справочник (Матем.)</button>
+  </div>
+
+  <section class="argument-panel" id="panel-cliches" role="tabpanel" aria-labelledby="tab-cliches" data-tab-content="cliches">
+    <div class="argument-card-grid">
+      {% for section in cliche_sections %}
+      <article class="card argument-card">
+        <h2 class="guide-category">{{ section.title }}</h2>
+        {% if loop.first %}
+        <ol class="cliche-list argument-list">
+          {% for item in section['items'] %}<li>{{ item }}</li>{% endfor %}
+        </ol>
+        {% else %}
+        <ul class="cliche-list argument-list">
+          {% for item in section['items'] %}<li>{{ item }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </div>
+
+    <aside class="argument-callout">
+      <h2>Что важно для оценивания</h2>
+      <p>Для К2 примеры берите именно из предложенного текста. Для К3 обоснуйте своё мнение примером из читательского, историко-культурного или жизненного опыта. Примеры из комиксов, аниме, манги, фанфиков, графических романов и компьютерных игр не засчитываются как пример-аргумент.</p>
+    </aside>
+
+    <details class="argument-details">
+      <summary>Критерии К1–К10 и баллы</summary>
+      <div class="argument-table-wrap">
+        <table class="argument-rubric">
+          <thead><tr><th>Критерий</th><th>Что проверяют</th><th>Баллы</th></tr></thead>
+          <tbody>
+            {% for code, title, points in rubric %}
+            <tr><th scope="row">{{ code }}</th><td>{{ title }}</td><td>{{ points }}</td></tr>
+            {% endfor %}
+          </tbody>
+          <tfoot><tr><th colspan="2">Максимум</th><th>22</th></tr></tfoot>
+        </table>
+      </div>
+      <p class="argument-small-note">Если в сочинении 149 слов или меньше, по всем критериям выставляется 0. Не пересказывайте исходный текст вместо комментария.</p>
+    </details>
+  </section>
+
+  <section class="argument-panel" id="panel-literature" role="tabpanel" aria-labelledby="tab-literature" data-tab-content="literature" style="display:none" aria-hidden="true">
+    <div class="argument-callout">
+      <h2>Как использовать произведение</h2>
+      <p>Это учебная подборка, а не обязательный список. Выберите произведение, которое хорошо помните: назовите автора и героя, приведите точный эпизод, объясните поступок и свяжите вывод с проблемой сочинения. Не подменяйте этим примером анализ исходного текста.</p>
+    </div>
+    <div class="argument-card-grid literature-grid">
+      {% for book in books %}
+      <article class="card argument-book">
+        <h2>{{ book.title }}</h2>
+        <p class="argument-author">{{ book.author }}</p>
+        <p><strong>Темы:</strong> {{ book.themes }}</p>
+        <p><strong>Эпизод для примера:</strong> {{ book.example }}</p>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="argument-panel" id="panel-problems" role="tabpanel" aria-labelledby="tab-problems" data-tab-content="problems" style="display:none" aria-hidden="true">
+    <p class="argument-section-lead">Подбирайте пример под конкретную мысль. В карточках — произведение, эпизод и направление рассуждения; формулировку ответа связывайте с проблемой задания.</p>
+    <div class="argument-card-grid">
+      {% for title, example in problems %}
+      <article class="card argument-example">
+        <h2>{{ title }}</h2>
+        <p>{{ example }}</p>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="argument-panel" id="panel-math-reference" role="tabpanel" aria-labelledby="tab-math-reference" data-tab-content="math-reference" style="display:none" aria-hidden="true">
+    <aside class="argument-callout">
+      <h2>Справочник по профильной математике</h2>
+      <p>Краткое повторение формул по алгебре, анализу, вероятности и геометрии. Проверяйте область допустимых значений, единицы измерения и обоснование каждого шага в развёрнутом решении.</p>
+    </aside>
+    <div class="argument-card-grid math-reference-grid">
+      {% for title, content in math_reference %}
+      <article class="card argument-formula">
+        <h2>{{ title }}</h2>
+        <pre>{{ content }}</pre>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll('#arg-tabs [role="tab"]').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var target = this.dataset.tab;
+    document.querySelectorAll('#arg-tabs [role="tab"]').forEach(function(tab) {
+      var active = tab === btn;
+      tab.classList.toggle('active', active);
+      tab.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    document.querySelectorAll('#arg-tabs ~ .argument-panel').forEach(function(panel) {
+      var active = panel.dataset.tabContent === target;
+      panel.style.display = active ? '' : 'none';
+      panel.setAttribute('aria-hidden', active ? 'false' : 'true');
+    });
+  });
+});
+</script>
+{% endblock %}

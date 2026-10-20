@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block title %}Профиль — ЕГЭ Тренажёр{% endblock %}
+{% block content %}
+<div class="container profile-page">
+  <div class="page-title">Профиль</div>
+  <div class="page-subtitle">Прогресс и результаты по предметам</div>
+
+  {% if profile_notice %}
+  <div class="profile-message profile-message-success" role="status">{{ profile_notice }}</div>
+  {% endif %}
+  {% if profile_error %}
+  <div class="profile-message profile-message-error" role="alert">{{ profile_error }}</div>
+  {% endif %}
+
+  <div class="profile-top-grid profile-top-grid-single">
+    <section class="card profile-summary">
+      <div class="profile-identity-text">
+        <h2>{{ user.name }}</h2>
+        <p>{{ user.email }}</p>
+      </div>
+      <div class="profile-metrics">
+        <div><strong>{{ user.xp }}</strong><span>XP</span></div>
+        <div><strong>{{ user.tests_completed }}</strong><span>Тестов</span></div>
+      </div>
+    </section>
+  </div>
+
+  <section class="card profile-performance">
+    <div class="profile-card-title">Какие предметы даются лучше</div>
+    <p class="profile-helper">Сравнение по среднему проценту в завершённых тестах. Учитываются только предметы, по которым уже есть результаты.</p>
+    {% if strongest_subject %}
+    <div class="performance-highlights">
+      <div class="performance-highlight performance-best">
+        <span>Лучший результат</span>
+        <strong>{{ strongest_subject.title }}</strong>
+        <b>{{ strongest_subject.avg }}%</b>
+        <small>{{ strongest_subject.cnt }} тестов</small>
+      </div>
+      {% if weakest_subject %}
+      <div class="performance-highlight performance-focus">
+        <span>Нужно больше практики</span>
+        <strong>{{ weakest_subject.title }}</strong>
+        <b>{{ weakest_subject.avg }}%</b>
+        <small>{{ weakest_subject.cnt }} тестов</small>
+      </div>
+      {% else %}
+      <div class="performance-highlight performance-neutral">
+        <span>Сравнение предметов</span>
+        <strong>Пройдите тест по другому предмету</strong>
+        <small>Пока есть результат только по одному предмету</small>
+      </div>
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="profile-empty">Пройдите первый тест, чтобы увидеть, какие предметы получаются лучше.</div>
+    {% endif %}
+
+    <div class="subject-performance-list">
+      {% for item in subject_performance %}
+      <div class="subject-performance-row">
+        <div class="subject-performance-heading">
+          <strong>{{ item.title }}</strong>
+          {% if item.avg is not none %}
+          <span>{{ item.avg }}% · {{ item.cnt }} тестов</span>
+          {% else %}
+          <span>Пока нет результатов</span>
+          {% endif %}
+        </div>
+        <div class="progress-bar">
+          {% if item.avg is not none %}
+          <div class="progress-bar-fill" style="width:{{ item.avg }}%"></div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="card profile-history">
+    <div class="profile-card-title">История тестов</div>
+    {% if history %}
+    <div class="profile-history-scroll">
+      <table class="history-table">
+        <thead>
+          <tr><th>Предмет</th><th>Балл</th><th>Вопросов</th><th>Дата</th></tr>
+        </thead>
+        <tbody>
+          {% for h in history %}
+          <tr>
+            <td>{{ subjects.get(h.subject, {}).get('title', h.subject) }}</td>
+            <td>
+              <span style="font-weight:700;color:{% if h.score >= 80 %}var(--success){% elif h.score >= 50 %}var(--warning){% else %}var(--error){% endif %}">
+                {{ h.score }}%
+              </span>
+            </td>
+            <td>{{ h.questions_count }}</td>
+            <td style="color:var(--text-muted);font-size:0.85rem">{{ h.created_at.strftime('%d.%m.%Y') if h.created_at else '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="profile-empty">Вы ещё не прошли ни одного теста.</div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

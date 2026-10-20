@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Часть 1' if part == 'part1' else 'Часть 2' }} — {{ subj.title }}{% endblock %}
+{% block content %}
+<div class="container">
+  <a href="/py/subjects/{{ subject }}" class="back-link">← {{ subj.title }}</a>
+  <div class="page-title">{{ 'Тест — Часть 1' if part == 'part1' else 'Часть 2' }}</div>
+  <div class="page-subtitle">{{ subj.title }} • <span id="answered-count">0</span> из {{ questions|length }} отвечено</div>
+  {% if part == 'part2' %}
+  <div class="alert" style="margin:16px 0;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af">
+    Задания второй части требуют внимательного решения. После проверки вы увидите пояснение и разбор типичной ошибки.
+  </div>
+  {% endif %}
+
+  {% if questions %}
+  <div id="quiz-form" data-practice-id="{{ practice_id }}" data-total="{{ questions|length }}" data-subject="{{ subject }}" data-part="{{ part }}" data-mode="quiz">
+    {% for q in questions %}
+    <div class="quiz-question" data-qid-block="{{ q.id }}" data-answer-type="{{ q.answer_type }}">
+      <div class="question-header">
+        <div class="question-number">Задание {{ q.task_number }} — {{ q.section }}</div>
+        <span class="badge {% if q.difficulty in ('profile', 'part2_bank') %}badge-orange{% else %}badge-blue{% endif %}">
+          {{ 'Профиль' if q.difficulty in ('profile', 'part2_bank') else 'База' }}
+        </span>
+      </div>
+      <div class="question-text">{{ q.text }}</div>
+      {% if subject == 'math' and part == 'part2' %}
+      <div class="solution-pad" data-solution-pad data-question-id="{{ q.id }}">
+        <div class="solution-pad-header">
+          <div>
+            <div class="solution-pad-title">Решение от руки</div>
+            <div class="solution-pad-hint">Запишите формулы, преобразования и промежуточные вычисления.</div>
+          </div>
+          <span class="solution-pad-status" data-draw-status aria-live="polite"></span>
+        </div>
+        <div class="solution-pad-toolbar" role="toolbar" aria-label="Инструменты поля решения">
+          <button type="button" class="draw-tool active" data-draw-action="pen">Ручка</button>
+          <button type="button" class="draw-tool" data-draw-action="eraser">Ластик</button>
+          <button type="button" class="draw-tool" data-draw-action="undo">Отменить</button>
+          <button type="button" class="draw-tool draw-tool-danger" data-draw-action="clear">Очистить</button>
+        </div>
+        <canvas class="solution-canvas" width="1200" height="320"
+                data-solution-canvas
+                aria-label="Поле для рукописного решения задания {{ q.task_number }}"></canvas>
+      </div>
+      {% endif %}
+      {% include 'question_response.html' %}
+      <div class="explanation" data-wrong-expl='{{ (q.wrong_expl or {}) | tojson | forceescape }}'></div>
+    </div>
+    {% endfor %}
+
+    <div class="quiz-controls">
+      <div style="color:var(--text-muted);font-size:0.9rem">Выберите ответы на все вопросы</div>
+      <button id="submit-quiz" class="btn btn-primary btn-lg">Проверить ответы</button>
+    </div>
+
+    <div id="quiz-result" class="quiz-result">
+      <div class="result-score great">—</div>
+      <div style="font-size:1.1rem;font-weight:700;margin-bottom:8px">Результат теста</div>
+      <div style="color:var(--text-muted);margin-bottom:16px">Правильных ответов: <span class="result-correct">—</span></div>
+      <div class="xp-earned">Заработано <span class="result-xp">0 XP</span></div>
+      <div class="result-mistakes-notice" style="display:none;margin:16px 0;padding:12px;background:#fef2f2;border-radius:8px;font-size:0.88rem;color:#991b1b">
+        Неверные ответы добавлены в <a href="/py/mistakes" style="color:#991b1b;font-weight:700">Банк ошибок</a>
+      </div>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+        <a href="/py/subjects/{{ subject }}/quiz?part={{ part }}" class="btn btn-primary">Ещё раз</a>
+        <a href="/py/subjects/{{ subject }}" class="btn btn-secondary">← К предмету</a>
+        <a href="/py/mistakes" class="btn" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca">Мои ошибки</a>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="empty-state"><div class="icon">—</div><div>Вопросы ещё не добавлены</div></div>
+  {% endif %}
+</div>
+{% endblock %}

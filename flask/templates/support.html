@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}Поддержка — ЕГЭ Тренажёр{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="page-title">Поддержка</div>
+  <div class="page-subtitle">Задайте вопрос администратору. Ответ появится здесь.</div>
+
+  {% if support_notice %}
+  <div class="alert alert-success" role="status">{{ support_notice }}</div>
+  {% endif %}
+  {% if support_error %}
+  <div class="alert alert-error" role="alert">{{ support_error }}</div>
+  {% endif %}
+
+  <section class="card support-form-card">
+    <h2 class="support-section-title">Написать в поддержку</h2>
+    <form method="post" action="/py/support/ask">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-group">
+        <label class="form-label" for="support-subject">Тема вопроса</label>
+        <input class="form-input" id="support-subject" name="subject" type="text"
+               maxlength="120" required placeholder="Например, проблема с заданием">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="support-question">Ваш вопрос</label>
+        <textarea class="form-input" id="support-question" name="question" rows="6"
+                  maxlength="5000" required placeholder="Опишите, что случилось или что нужно уточнить"></textarea>
+      </div>
+      <button class="btn btn-primary" type="submit">Отправить вопрос</button>
+    </form>
+  </section>
+
+  <section class="support-history">
+    <h2 class="support-section-title">Мои обращения</h2>
+    {% if tickets %}
+      {% for ticket in tickets %}
+      <article class="card support-ticket">
+        <div class="support-ticket-heading">
+          <h3>{{ ticket.subject }}</h3>
+          {% if ticket.status == 'answered' %}
+          <span class="badge badge-green">Ответ получен</span>
+          {% else %}
+          <span class="badge support-open-badge">Ожидает ответа</span>
+          {% endif %}
+        </div>
+        <div class="support-ticket-date">{{ ticket.created_at|short_timestamp }}</div>
+        <div class="support-message support-user-message">
+          <div class="support-message-label">Ваш вопрос</div>
+          <div class="support-message-copy">{{ ticket.question }}</div>
+        </div>
+        {% if ticket.admin_reply %}
+        <div class="support-message support-admin-message">
+          <div class="support-message-label">Ответ администратора</div>
+          <div class="support-message-copy">{{ ticket.admin_reply }}</div>
+        </div>
+        {% endif %}
+      </article>
+      {% endfor %}
+    {% else %}
+    <div class="empty-state support-empty">
+      <div class="icon">—</div>
+      <div>Вы ещё не обращались в поддержку.</div>
+    </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

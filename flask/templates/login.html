@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="/py/static/favicon.svg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Вход — ЕГЭ Тренажёр</title>
+  <script>
+    (function () {
+      var theme = 'light';
+      try {
+        if (localStorage.getItem('ege-trainer-theme') === 'dark') theme = 'dark';
+      } catch (e) {}
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <link rel="stylesheet" href="/py/static/css/style.css">
+</head>
+<body>
+<button class="theme-toggle theme-toggle-floating" type="button" data-theme-toggle>
+  <span class="theme-toggle-icon" aria-hidden="true">☾</span>
+  <span class="theme-toggle-label">Тёмная тема</span>
+</button>
+<div class="login-page">
+  <div class="login-left">
+    <div class="login-logo">ЕГЭ Тренажёр</div>
+    <div class="login-headline">Поступи на бюджет без стресса.</div>
+    <p style="opacity:0.85;line-height:1.6;font-size:0.95rem">Системная подготовка, реальные задания прошлых лет и подробная аналитика твоего прогресса. Всё, что нужно для 80+ баллов в одном месте.</p>
+    <ul class="login-features">
+      <li>→ Актуальная база заданий ФИПИ</li>
+      <li>→ Понятная теория без воды</li>
+      <li>→ Умное отслеживание прогресса</li>
+      <li>→ Разборы заданий и методички</li>
+    </ul>
+    <p style="margin-top:auto;padding-top:40px;opacity:0.5;font-size:0.8rem">© 2026 ЕГЭ Тренажёр. Все права защищены.</p>
+  </div>
+  <div class="login-right">
+    <div class="login-card">
+      <h2 style="font-size:1.3rem;font-weight:800;text-align:center;margin-bottom:4px">Начни подготовку сейчас</h2>
+      <p style="text-align:center;color:var(--text-muted);font-size:0.88rem;margin-bottom:20px">Войди в аккаунт или создай новый</p>
+
+      {% if error %}
+      <div class="alert alert-error">{{ error }}</div>
+      {% endif %}
+
+      <div class="tab-switcher">
+         <a href="/py/login?tab=login" class="tab-switch-btn {% if tab == 'login' or not tab %}active{% endif %}" data-target="panel-login">Вход</a>
+         <a href="/py/register" class="tab-switch-btn {% if tab == 'register' %}active{% endif %}" data-target="panel-register">Регистрация</a>
+      </div>
+
+       <div class="tab-panel" id="panel-login" {% if tab == 'register' %}style="display:none"{% else %}style="display:block"{% endif %}>
+        <form method="POST" action="/py/login">
+          <input type="hidden" name="action" value="login">
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-input" placeholder="student@example.com" required autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Пароль</label>
+            <input type="password" name="password" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-top:8px">Войти</button>
+        </form>
+      </div>
+
+      <div class="tab-panel" id="panel-register" {% if tab != 'register' %}style="display:none"{% endif %}>
+        <form method="POST" action="/py/login">
+          <input type="hidden" name="action" value="register">
+          <div class="form-group">
+            <label class="form-label">Имя</label>
+            <input type="text" name="name" class="form-input" placeholder="Иван Иванов" required minlength="2" autocomplete="name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-input" placeholder="student@example.com" required autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Пароль</label>
+            <input type="password" name="password" class="form-input" placeholder="Минимум 6 символов" required minlength="6" autocomplete="new-password">
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-top:8px">Создать аккаунт</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="/py/static/js/theme.js"></script>
+<script src="/py/static/js/app.js"></script>
+</body>
+</html>

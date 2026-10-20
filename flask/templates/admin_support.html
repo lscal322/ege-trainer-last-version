@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}Поддержка — Панель администратора{% endblock %}
+{% block content %}
+<div class="container">
+  <a href="/py/admin" class="back-link">← Панель администратора</a>
+  <div class="page-title">Вопросы учеников</div>
+  <div class="page-subtitle">Сначала показаны обращения, которые ещё ждут ответа.</div>
+
+  {% if message %}
+  <div class="alert alert-success" role="status">{{ message }}</div>
+  {% endif %}
+  {% if error %}
+  <div class="alert alert-error" role="alert">{{ error }}</div>
+  {% endif %}
+
+  {% if tickets %}
+    {% for ticket in tickets %}
+    <article class="card admin-support-ticket">
+      <div class="support-ticket-heading">
+        <h2>{{ ticket.subject }}</h2>
+        {% if ticket.status == 'answered' %}
+        <span class="badge badge-green">Ответ отправлен</span>
+        {% else %}
+        <span class="badge support-open-badge">Ждёт ответа</span>
+        {% endif %}
+      </div>
+      <div class="admin-support-meta">
+        <strong>{{ ticket.user_name }}</strong>
+        <span>{{ ticket.user_email }}</span>
+        <span>{{ ticket.created_at|short_timestamp }}</span>
+      </div>
+      <div class="support-message support-user-message">
+        <div class="support-message-label">Вопрос ученика</div>
+        <div class="support-message-copy">{{ ticket.question }}</div>
+      </div>
+      <form method="post" action="/py/admin/support/{{ ticket.id }}/reply" class="support-reply-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="form-label" for="support-reply-{{ ticket.id }}">
+          {{ 'Изменить ответ' if ticket.admin_reply else 'Ответить ученику' }}
+        </label>
+        <textarea class="form-input" id="support-reply-{{ ticket.id }}" name="reply"
+                  rows="4" maxlength="5000" required>{{ ticket.admin_reply }}</textarea>
+        <button class="btn btn-primary btn-sm" type="submit">
+          {{ 'Сохранить ответ' if ticket.admin_reply else 'Отправить ответ' }}
+        </button>
+      </form>
+    </article>
+    {% endfor %}
+  {% else %}
+  <div class="empty-state">
+    <div class="icon">—</div>
+    <div>Пока нет обращений от учеников.</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

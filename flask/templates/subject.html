@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block title %}{{ subj.title }} — ЕГЭ Тренажёр{% endblock %}
+{% block content %}
+<div class="container">
+  <a href="/py/" class="back-link">← Все предметы</a>
+  <div style="margin-bottom:16px">
+    <div class="page-title" style="margin-bottom:2px">{{ subj.title }}</div>
+    <div style="color:var(--text-muted)">{{ subj.description }}</div>
+  </div>
+
+  {% if avg_score > 0 %}
+  <div style="margin-bottom:24px">
+    <div class="progress-bar" style="height:10px">
+      <div class="progress-bar-fill" style="width:{{ avg_score }}%"></div>
+    </div>
+    <div class="progress-label" style="margin-top:4px">
+      <span>Средний балл</span><span style="font-weight:700;color:var(--primary)">{{ avg_score }}%</span>
+    </div>
+  </div>
+  {% else %}
+  <div style="margin-bottom:24px"></div>
+  {% endif %}
+
+  <div style="margin-bottom:12px;font-weight:800;font-size:0.82rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">Режимы тренировки</div>
+  <div class="grid-2" style="margin-bottom:20px">
+    <a href="/py/subjects/{{ subject }}/exam" class="subject-card mode-card mode-card-exam">
+      <div class="subject-title">Режим «Экзамен»</div>
+      <div class="subject-desc">Полный экзамен по времени ЕГЭ ({{ subj.time_min }} мин). Таймер, анти-читерство, финальный балл.</div>
+      <span class="badge mode-badge" style="margin-top:8px">{{ subj.time_min }} мин</span>
+    </a>
+    <a href="/py/subjects/{{ subject }}/quiz?part=part1" class="subject-card mode-card mode-card-test">
+      <div class="subject-title">Обычный тест — Часть 1</div>
+      <div class="subject-desc">{{ q1_count }} заданий первой части: есть вопросы с выбором и вводом ответа.</div>
+      <span class="badge mode-badge" style="margin-top:8px">{{ q1_count }} вопросов</span>
+    </a>
+    <a href="/py/subjects/{{ subject }}/drill" class="subject-card mode-card mode-card-drill">
+      <div class="subject-title">Режим «Набивка руки»</div>
+      <div class="subject-desc">Выбери задание (№1, №7, №13…) и решай однотипные варианты до 100% правильных.</div>
+      <span class="badge mode-badge" style="margin-top:8px">По номеру задания</span>
+    </a>
+    <a href="/py/subjects/{{ subject }}/adaptive" class="subject-card mode-card mode-card-adaptive">
+      <div class="subject-title">Режим «Слабое место»</div>
+      <div class="subject-desc">Система анализирует твои ошибки и автоматически даёт задания именно по слабым темам.</div>
+      <span class="badge mode-badge" style="margin-top:8px">Адаптивный</span>
+    </a>
+  </div>
+
+  <div style="margin-bottom:12px;font-weight:800;font-size:0.82rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">Учебные материалы</div>
+  <div class="grid-2">
+    <a href="/py/subjects/{{ subject }}/theory" class="subject-card">
+      <div class="subject-title">Теория</div>
+      <div class="subject-desc">Краткие конспекты по всем темам.</div>
+      <span class="badge mode-badge" style="margin-top:8px">Конспекты</span>
+    </a>
+    <a href="/py/subjects/{{ subject }}/analyses" class="subject-card">
+      <div class="subject-title">Разборы заданий</div>
+      <div class="subject-desc">Детальный анализ типичных задач с советами.</div>
+      <span class="badge mode-badge" style="margin-top:8px">Разборы</span>
+    </a>
+    <a href="/py/subjects/{{ subject }}/guides" class="subject-card">
+      <div class="subject-title">Методички и шпаргалки</div>
+      <div class="subject-desc">Формулы, алгоритмы, правила — всё в удобном формате.</div>
+      <span class="badge mode-badge" style="margin-top:8px">Методички</span>
+    </a>
+    {% if subject == 'russian' %}
+    <a href="/py/subjects/russian/final-essay" class="subject-card">
+      <div class="subject-title">Итоговое сочинение — декабрь</div>
+      <div class="subject-desc">Тренировка для 11 класса: тема, литературный аргумент, объём от 250 слов.</div>
+      <span class="badge mode-badge" style="margin-top:8px">Формат декабря</span>
+    </a>
+    {% endif %}
+    <a href="{{ '/py/subjects/russian/essay?from=part2' if subject == 'russian' else '/py/subjects/' ~ subject ~ '/quiz?part=part2' }}" class="subject-card">
+      {% if subject == 'russian' %}
+      <div class="subject-title">Сочинение ЕГЭ — задание 27</div>
+      <div class="subject-desc">{{ q2_count }} тренировочных текстов, комментарий к исходному тексту и критерии ЕГЭ.</div>
+      <span class="badge mode-badge" style="margin-top:8px">{{ q2_count }} текстов</span>
+      {% elif subject == 'informatics' %}
+      <div class="subject-title">Сложные задания — 24–27</div>
+      <div class="subject-desc">{{ q2_count }} задач повышенной сложности со свободным ответом. В информатике нет отдельной части 2; здесь собрана практика сложных заданий.</div>
+      <span class="badge mode-badge" style="margin-top:8px">{{ q2_count }} задач</span>
+      {% else %}
+      <div class="subject-title">Часть 2 — задания повышенной сложности</div>
+      <div class="subject-desc">{{ q2_count }} заданий с самостоятельным вводом ответа и пошаговыми разборами.</div>
+      <span class="badge mode-badge" style="margin-top:8px">{{ q2_count }} вопросов</span>
+      {% endif %}
+    </a>
+  </div>
+</div>
+{% endblock %}

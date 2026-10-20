@@ -1,0 +1,201 @@
+{% extends 'base.html' %}
+{% block title %}Итоговое сочинение — Русский язык{% endblock %}
+{% block content %}
+<div class="container">
+  <a href="/py/subjects/russian" class="back-link">← Русский язык</a>
+  <div class="page-title">Итоговое сочинение — декабрь</div>
+  <div class="page-subtitle">Отдельная тренировка формата, который пишут одиннадцатиклассники для допуска к ЕГЭ.</div>
+
+  <div class="card final-essay-note">
+    <strong>Как тренироваться</strong>
+    <p>Выберите тему, сформулируйте ответ на неё и подтвердите мысль примером из литературы. Минимальный объём — 250 слов. Темы здесь тренировочные, это не официальный перечень тем текущего года.</p>
+  </div>
+
+  <div class="card final-essay-topic-picker">
+    <label for="final-essay-topic" class="form-label">Тема для тренировки</label>
+    <select id="final-essay-topic" class="form-input">
+      {% for topic in topics %}
+      <option value="{{ loop.index0 }}">{{ topic }}</option>
+      {% endfor %}
+    </select>
+    <div id="final-essay-current-topic" class="final-essay-current-topic">{{ topics[0] }}</div>
+  </div>
+
+  <div class="final-essay-layout">
+    <section class="card">
+      <div class="final-essay-editor-heading">
+        <label for="final-essay-text" class="form-label">Ваше сочинение</label>
+        <span id="final-essay-word-count" class="badge badge-blue">0 / 250 слов</span>
+      </div>
+      <textarea id="final-essay-text" class="form-input final-essay-textarea"
+                maxlength="30000"
+                placeholder="1. Сформулируйте тезис и ответьте на вопрос темы.
+
+2. Приведите пример из литературного произведения и объясните, как он подтверждает вашу мысль.
+
+3. Подведите итог рассуждению."></textarea>
+      <div id="final-essay-save-status" class="final-essay-save-status" aria-live="polite">Черновик сохраняется в этом браузере.</div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px">
+        <button type="button" class="btn btn-primary" id="final-essay-submit">Отправить на проверку</button>
+        <a href="/py/my-essays" class="btn btn-secondary">Мои сочинения и проверка</a>
+      </div>
+      <div id="final-essay-submit-status" class="profile-message" aria-live="polite" style="display:none;margin-top:12px"></div>
+    </section>
+
+    <aside class="card">
+      <h2 class="final-essay-check-title">Самопроверка</h2>
+      <p class="page-subtitle">Отметьте выполненные пункты. Это памятка, а не автоматическая оценка содержания.</p>
+      <div class="final-essay-checklist">
+        <label><input type="checkbox" data-final-criterion="1"> Я прямо ответил на тему и сформулировал тезис.</label>
+        <label><input type="checkbox" data-final-criterion="2"> Я привёл литературный аргумент и объяснил его связь с темой.</label>
+        <label><input type="checkbox" data-final-criterion="3"> В сочинении есть вступление, основная часть и вывод.</label>
+        <label><input type="checkbox" data-final-criterion="4"> Мысли связаны, примеры не заменены пересказом.</label>
+        <label><input type="checkbox" data-final-criterion="5"> Я проверил речь, орфографию и пунктуацию.</label>
+      </div>
+      <div id="final-essay-readiness" class="final-essay-readiness" aria-live="polite"></div>
+      <p class="final-essay-rubric-note">Для зачёта важны соответствие теме и литературная аргументация; также требуется зачёт минимум по одному из остальных критериев.</p>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function () {
+  var topics = {{ topics | tojson }};
+  var topicSelect = document.getElementById('final-essay-topic');
+  var topicLabel = document.getElementById('final-essay-current-topic');
+  var textArea = document.getElementById('final-essay-text');
+  var countLabel = document.getElementById('final-essay-word-count');
+  var saveStatus = document.getElementById('final-essay-save-status');
+  var submitButton = document.getElementById('final-essay-submit');
+  var submitStatus = document.getElementById('final-essay-submit-status');
+  var readiness = document.getElementById('final-essay-readiness');
+  var checks = Array.prototype.slice.call(document.querySelectorAll('[data-final-criterion]'));
+  var drafts = {};
+  var activeTopic = 0;
+  var draftKey = 'ege-trainer-final-essay-drafts-v1';
+  var topicKey = 'ege-trainer-final-essay-topic-v1';
+
+  try {
+    drafts = JSON.parse(localStorage.getItem(draftKey) || '{}');
+    if (!drafts || typeof drafts !== 'object' || Array.isArray(drafts)) drafts = {};
+    var savedTopic = Number(localStorage.getItem(topicKey));
+    if (Number.isInteger(savedTopic) && savedTopic >= 0 && savedTopic < topics.length) activeTopic = savedTopic;
+  } catch (error) {
+    drafts = {};
+  }
+
+  function wordCount() {
+    var text = textArea.value.trim();
+    return text ? text.split(/\s+/).length : 0;
+  }
+
+  function saveDraft() {
+    var criterionState = {};
+    checks.forEach(function (check) {
+      criterionState[check.dataset.finalCriterion] = check.checked;
+    });
+    drafts[String(activeTopic)] = { text: textArea.value, criteria: criterionState };
+    try {
+      localStorage.setItem(draftKey, JSON.stringify(drafts));
+      localStorage.setItem(topicKey, String(activeTopic));
+      saveStatus.textContent = 'Черновик сохранён в этом браузере.';
+    } catch (error) {
+      saveStatus.textContent = 'Не удалось сохранить черновик в браузере.';
+    }
+  }
+
+  function updateStatus() {
+    var count = wordCount();
+    countLabel.textContent = count + ' / 250 слов';
+    countLabel.classList.toggle('badge-green', count >= 250);
+    countLabel.classList.toggle('badge-blue', count < 250);
+
+    var checked = checks.filter(function (check) { return check.checked; });
+    var requiredCriteriaMet = checks[0].checked && checks[1].checked;
+    if (count < 250) {
+      readiness.textContent = 'До минимального объёма осталось ' + (250 - count) + ' слов.';
+      readiness.className = 'final-essay-readiness is-incomplete';
+    } else if (!requiredCriteriaMet) {
+      readiness.textContent = 'Проверьте первые два пункта: ответ на тему и литературный аргумент обязательны.';
+      readiness.className = 'final-essay-readiness is-incomplete';
+    } else if (checked.length < 3) {
+      readiness.textContent = 'Отметьте ещё хотя бы один выполненный пункт из критериев 3–5.';
+      readiness.className = 'final-essay-readiness is-incomplete';
+    } else {
+      readiness.textContent = 'По вашей самопроверке основные условия выполнены. Это не гарантирует автоматический зачёт.';
+      readiness.className = 'final-essay-readiness is-complete';
+    }
+  }
+
+  function loadTopicDraft() {
+    topicSelect.value = String(activeTopic);
+    topicLabel.textContent = topics[activeTopic];
+    var draft = drafts[String(activeTopic)] || {};
+    textArea.value = typeof draft.text === 'string' ? draft.text : '';
+    checks.forEach(function (check) {
+      check.checked = Boolean(draft.criteria && draft.criteria[check.dataset.finalCriterion]);
+    });
+    updateStatus();
+  }
+
+  topicSelect.addEventListener('change', function () {
+    saveDraft();
+    activeTopic = Number(topicSelect.value);
+    try { localStorage.setItem(topicKey, String(activeTopic)); } catch (error) {}
+    loadTopicDraft();
+  });
+  textArea.addEventListener('input', function () { updateStatus(); saveDraft(); });
+  checks.forEach(function (check) {
+    check.addEventListener('change', function () { updateStatus(); saveDraft(); });
+  });
+  submitButton.addEventListener('click', function() {
+    var text = textArea.value.trim();
+    if (!text) {
+      submitStatus.style.display = 'block';
+      submitStatus.className = 'profile-message profile-message-error';
+      submitStatus.textContent = 'Сначала напишите сочинение.';
+      return;
+    }
+    if (wordCount() < 250 && !confirm('В сочинении меньше 250 слов. Всё равно отправить его администратору?')) return;
+
+    var checklist = {};
+    checks.forEach(function(check) {
+      checklist[check.dataset.finalCriterion] = check.checked;
+    });
+    submitButton.disabled = true;
+    submitButton.textContent = 'Отправляем…';
+    submitStatus.style.display = 'block';
+    submitStatus.className = 'profile-message';
+    submitStatus.textContent = 'Отправляем работу администратору…';
+
+    fetch('/py/subjects/russian/final-essay/submit', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        text: text,
+        topic: topics[activeTopic],
+        checklist: checklist
+      })
+    })
+    .then(function(response) {
+      return response.json().then(function(data) {
+        if (!response.ok || !data.ok) throw new Error(data.error || 'Не удалось отправить сочинение.');
+        return data;
+      });
+    })
+    .then(function() {
+      submitStatus.className = 'profile-message profile-message-success';
+      submitStatus.textContent = 'Итоговое сочинение отправлено администратору. Открываем историю работ…';
+      setTimeout(function() { location.href = '/py/my-essays'; }, 1200);
+    })
+    .catch(function(error) {
+      submitStatus.className = 'profile-message profile-message-error';
+      submitStatus.textContent = error.message || 'Ошибка отправки. Попробуйте ещё раз.';
+      submitButton.disabled = false;
+      submitButton.textContent = 'Отправить на проверку';
+    });
+  });
+  loadTopicDraft();
+})();
+</script>
+{% endblock %}

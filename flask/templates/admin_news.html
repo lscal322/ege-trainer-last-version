@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% block title %}Новости — Панель администратора{% endblock %}
+{% block content %}
+<div class="container">
+  <a href="/py/admin" class="back-link">← Панель администратора</a>
+  <div class="page-title">Управление новостями</div>
+  <div class="page-subtitle">Добавляйте и удаляйте новости об изменениях ЕГЭ</div>
+
+  {% if message %}
+  <div class="alert" style="padding:12px 16px;border-radius:8px;margin-bottom:20px;
+       background:{{ '#f0fdf4' if message_type == 'success' else '#fef2f2' }};
+       border:1px solid {{ '#bbf7d0' if message_type == 'success' else '#fecaca' }};
+       color:{{ '#166534' if message_type == 'success' else '#991b1b' }}">
+    {{ message }}
+  </div>
+  {% endif %}
+
+  <section class="card admin-news-suggestions">
+    <div class="admin-news-section-title">Предложения учеников ({{ suggestions|length }})</div>
+    {% if suggestions %}
+      {% for suggestion in suggestions %}
+      <article class="admin-news-suggestion">
+        <div class="admin-news-suggestion-meta">
+          <span class="badge badge-blue">{{ suggestion.year }}</span>
+          {% if suggestion.subject %}
+          <span class="badge" style="background:#f3e8ff;color:#7c3aed">{{ news_subject_labels.get(suggestion.subject, suggestion.subject) }}</span>
+          {% endif %}
+          <span>{{ suggestion.user_name }} · {{ suggestion.user_email }}</span>
+          <span>{{ suggestion.created_at|short_timestamp }}</span>
+        </div>
+        <h3>{{ suggestion.title }}</h3>
+        <div class="admin-news-suggestion-copy">{{ suggestion.content }}</div>
+        <div class="admin-news-suggestion-actions">
+          <form method="POST" action="/py/admin/news/suggestions/{{ suggestion.id }}/publish">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-primary btn-sm">Опубликовать</button>
+          </form>
+          <form method="POST" action="/py/admin/news/suggestions/{{ suggestion.id }}/reject"
+                onsubmit="return confirm('Отклонить предложение?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm admin-news-reject">Отклонить</button>
+          </form>
+        </div>
+      </article>
+      {% endfor %}
+    {% else %}
+    <div class="profile-empty">Новых предложений нет.</div>
+    {% endif %}
+  </section>
+
+  <!-- Форма добавления новости -->
+  <div class="card" style="margin-bottom:28px">
+    <div style="font-weight:800;font-size:1rem;margin-bottom:16px">Добавить новость</div>
+    <form method="POST" action="/py/admin/news/add">
+      <div class="grid-2" style="gap:14px;margin-bottom:14px">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Заголовок <span style="color:var(--error)">*</span></label>
+          <input type="text" name="title" class="form-input" placeholder="Изменения в ЕГЭ по математике 2026" required maxlength="200">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Год <span style="color:var(--error)">*</span></label>
+          <input type="number" name="year" class="form-input" value="2026" min="2020" max="2035" required>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label class="form-label">Предмет (опционально)</label>
+        <select name="subject" class="form-input">
+          <option value="">Все предметы / общее</option>
+          <option value="math">Математика</option>
+          <option value="russian">Русский язык</option>
+          <option value="physics">Физика</option>
+          <option value="informatics">Информатика</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:16px">
+        <label class="form-label">Текст новости <span style="color:var(--error)">*</span></label>
+        <textarea name="content" class="form-input" rows="4" required
+                  placeholder="Подробное описание изменений, важных дат, новых требований..."></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">Опубликовать новость</button>
+    </form>
+  </div>
+
+  <!-- Опубликованные новости -->
+  <div style="font-weight:800;font-size:0.9rem;margin-bottom:14px">
+    Опубликованные новости ({{ items|length }})
+  </div>
+
+  {% if items %}
+  {% for item in items %}
+  <div class="news-item admin-news-item" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:16px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;background:white">
+    <div style="flex:1">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+        <span class="badge badge-blue">{{ item.year }}</span>
+        {% if item.subject %}<span class="badge" style="background:#f3e8ff;color:#7c3aed">{{ news_subject_labels.get(item.subject, item.subject) }}</span>{% endif %}
+        <span style="font-size:0.75rem;color:var(--text-muted)">{{ item.created_at|short_timestamp }}</span>
+      </div>
+      <div style="font-weight:700;margin-bottom:4px">{{ item.title }}</div>
+      <div style="font-size:0.88rem;color:var(--text-muted);line-height:1.5">{{ item.content }}</div>
+    </div>
+    <form method="POST" action="/py/admin/news/delete/{{ item.id }}" style="flex-shrink:0"
+          onsubmit="return confirm('Удалить эту новость?')">
+      <button type="submit" class="btn btn-sm" style="background:#fef2f2;color:var(--error);border:1px solid #fecaca">
+        Удалить
+      </button>
+    </form>
+  </div>
+  {% endfor %}
+  {% else %}
+  <div class="empty-state"><div class="icon">—</div><div>Новостей пока нет. Добавьте первую.</div></div>
+  {% endif %}
+</div>
+{% endblock %}

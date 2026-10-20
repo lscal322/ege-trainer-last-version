@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% block title %}Аналитика — ЕГЭ Тренажёр{% endblock %}
+{% block content %}
+<div class="container">
+  <a href="/py/" class="back-link">← Главная</a>
+  <div class="page-title">Аналитика прогресса</div>
+  <div class="page-subtitle">Подробная статистика по вашей подготовке</div>
+
+  <!-- Сводка по предметам -->
+  <div class="grid-4" style="margin-bottom:28px">
+    {% for sid, subj in subjects.items() %}
+    {% set subj_results = results | selectattr('subject','eq',sid) | list %}
+    {% set avg = (subj_results | map(attribute='score') | list | sum / subj_results|length) | round | int if subj_results else 0 %}
+    <div class="stat-card">
+      <div class="stat-value" style="font-size:1.8rem;color:{% if avg >= 80 %}var(--success){% elif avg >= 50 %}var(--warning){% else %}var(--error){% endif %}">{{ avg }}%</div>
+      <div class="stat-label">{{ subj.title.split('(')[0].strip() }}</div>
+      <div style="font-size:0.75rem;color:var(--text-muted)">{{ subj_results|length }} тестов</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="analytics-layout" style="display:grid;grid-template-columns:minmax(0,2fr) minmax(260px,1fr);gap:24px;margin-bottom:28px">
+    <!-- Динамика результатов -->
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:16px">Динамика баллов (последние 20 тестов)</div>
+      <canvas id="dynamicsChart" height="200"></canvas>
+    </div>
+    <!-- Распределение времени -->
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:16px">Среднее время на вопрос</div>
+      {% if time_stats %}
+      {% for sid, subj in subjects.items() %}
+      {% if time_stats.get(sid,0) > 0 %}
+      <div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:4px">
+          <span>{{ subj.title.split('(')[0].strip() }}</span>
+          <span style="font-weight:700;color:{% if time_stats.get(sid,0) > 180 %}var(--error){% elif time_stats.get(sid,0) > 90 %}var(--warning){% else %}var(--success){% endif %}">
+            {{ time_stats.get(sid,0) }}с
+          </span>
+        </div>
+        <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:{{ [time_stats.get(sid,0)/300*100,100]|min }}%;background:{% if time_stats.get(sid,0) > 180 %}var(--error){% elif time_stats.get(sid,0) > 90 %}var(--warning){% else %}var(--success){% endif %};border-radius:3px"></div>
+        </div>
+      </div>
+      {% endif %}
+      {% endfor %}
+      <div style="margin-top:12px;font-size:0.78rem;color:var(--text-muted)">
+        &gt;180с — красная зона<br>
+        90–180с — норма<br>
+        &lt;90с — отлично
+      </div>
+      {% else %}
+      <div style="text-align:center;color:var(--text-muted);padding:20px;font-size:0.88rem">Пройдите тесты для анализа времени</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Прогресс по заданиям -->
+  {% if task_stats %}
+  <div class="card" style="margin-bottom:28px">
+    <div style="font-weight:800;margin-bottom:16px">Точность по типам заданий</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      {% for ts in task_stats %}
+      {% set acc = ts.acc | round | int %}
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:4px">
+          <span>
+            <span style="font-weight:600">{{ subjects.get(ts.subject,{}).get('title','').split('(')[0].strip() }}</span>
+            — Задание №{{ ts.task_number }}
+            {% if ts.section %}<span style="color:var(--text-muted)"> · {{ ts.section }}</span>{% endif %}
+          </span>
+          <span style="font-weight:700;color:{% if acc >= 80 %}var(--success){% elif acc >= 50 %}var(--warning){% else %}var(--error){% endif %}">
+            {{ acc }}%
+            <span style="font-weight:400;color:var(--text-muted)">({{ ts.attempts }} попыток)</span>
+          </span>
+        </div>
+        <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+          <div style="height:100%;width:{{ acc }}%;background:{% if acc >= 80 %}var(--success){% elif acc >= 50 %}var(--warning){% else %}var(--error){% endif %};border-radius:4px"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- История тестов -->
+  {% if results %}
+  <div class="card">
+    <div style="font-weight:800;margin-bottom:16px">История тестов</div>
+    <div class="analytics-history-scroll">
+    <table class="history-table analytics-history-table">
+      <thead>
+        <tr>
+          <th>Предмет</th>
+          <th>Режим</th>
+          <th>Балл</th>
+          <th>Дата</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in results[:20] %}
+        <tr>
+          <td>{{ subjects.get(r.subject,{}).get('title',r.subject).split('(')[0].strip() }}</td>
+          <td>
+            <span class="badge {% if r.mode == 'exam' %}badge-orange{% elif r.mode == 'adaptive' %}badge-purple{% else %}badge-blue{% endif %}">
+              {{ {'exam':'Экзамен','adaptive':'Адаптив','quiz':'Тест','drill':'Набивка'}.get(r.mode, r.mode) }}
+            </span>
+          </td>
+          <td>
+            <span style="font-weight:700;color:{% if r.score >= 80 %}var(--success){% elif r.score >= 50 %}var(--warning){% else %}var(--error){% endif %}">
+              {{ r.score }}%
+            </span>
+          </td>
+          <td style="color:var(--text-muted);font-size:0.85rem">{{ r.created_at }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="empty-state"><div class="icon">—</div><div>Данных пока нет. Пройдите первый тест!</div><a href="/py/" class="btn btn-primary" style="margin-top:16px">Начать</a></div>
+  {% endif %}
+
+  {% if mistake_count > 0 %}
+  <div style="margin-top:20px;padding:16px;background:#fef2f2;border-radius:var(--radius);border:1px solid #fecaca;display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <span style="font-weight:800;color:var(--error)">{{ mistake_count }} заданий в банке ошибок</span>
+      <span style="color:var(--text-muted);font-size:0.85rem;margin-left:8px">Разберите их для повышения балла</span>
+    </div>
+    <a href="/py/mistakes" class="btn btn-sm" style="background:#dc2626;color:white">Перейти</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var results = {{ results | tojson }};
+if (results.length) {
+  var labels = results.slice(0,20).map(function(r,i){ return r.subject.charAt(0).toUpperCase()+' #'+(i+1); }).reverse();
+  var scores = results.slice(0,20).map(function(r){ return r.score; }).reverse();
+  var colors = results.slice(0,20).map(function(r){
+    return r.score>=80?'rgba(22,163,74,0.8)':r.score>=50?'rgba(217,119,6,0.8)':'rgba(220,38,38,0.8)';
+  }).reverse();
+
+  var ctx = document.getElementById('dynamicsChart');
+  if (ctx) {
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Балл %',
+          data: scores,
+          backgroundColor: colors,
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { min:0, max:100, ticks: { callback: function(v){ return v+'%'; } } }
+        }
+      }
+    });
+  }
+}
+</script>
+{% endblock %}

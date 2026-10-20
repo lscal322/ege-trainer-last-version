@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% block title %}Сочинения — Панель администратора{% endblock %}
+{% block content %}
+<div class="container">
+  <a href="/py/admin" class="back-link">← Панель администратора</a>
+  <div class="page-title">Сочинения учеников</div>
+  <div class="page-subtitle">Проверяйте работы и выставляйте оценки</div>
+
+  <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+    <button class="tab-btn active" data-filter="all">Все ({{ essays|length }})</button>
+    <button class="tab-btn" data-filter="ungraded" style="color:var(--warning)">Не проверены ({{ essays | rejectattr('is_graded') | list | length }})</button>
+    <button class="tab-btn" data-filter="graded" style="color:var(--success)">Проверены ({{ essays | selectattr('is_graded') | list | length }})</button>
+  </div>
+
+  {% if essays %}
+  <div id="essays-list">
+    {% for e in essays %}
+    <div class="quiz-question essay-item" data-graded="{{ 'yes' if e.is_graded else 'no' }}"
+         style="border-left:3px solid {{ 'var(--success)' if e.is_graded else 'var(--warning)' }}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+        <div>
+          <div style="font-weight:800;font-size:1rem;margin-bottom:2px">{{ e.user_name }}</div>
+          <span class="badge {{ 'badge-purple' if e.essay_type == 'final' else 'badge-blue' }}">
+            {{ 'Итоговое сочинение — декабрь' if e.essay_type == 'final' else 'Сочинение ЕГЭ — задание 27' }}
+          </span>
+          <div style="font-size:0.82rem;color:var(--text-muted)">
+            {{ e.user_email }} &nbsp;·&nbsp;
+            {{ {'russian':'Русский язык','math':'Математика','physics':'Физика','informatics':'Информатика'}.get(e.subject, e.subject) }}
+            &nbsp;·&nbsp; {{ e.word_count }} слов
+            {% if e.essay_type != 'final' %}&nbsp;·&nbsp; Самооценка: {{ e.self_score }}/22{% endif %}
+            &nbsp;·&nbsp; {{ e.created_at|short_timestamp(16) if e.created_at else '—' }}
+          </div>
+          {% if e.essay_topic %}
+          <div style="font-size:0.84rem;font-weight:700;color:var(--primary);margin-top:5px">Тема: {{ e.essay_topic }}</div>
+          {% endif %}
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap">
+          {% if e.resubmit_count and e.resubmit_count > 0 %}
+          <span class="badge" style="background:#ede9fe;color:#5b21b6;font-weight:700">Повторная отправка</span>
+          {% endif %}
+          {% if e.is_graded and e.essay_type == 'final' %}
+          <span class="badge {{ 'badge-green' if e.teacher_result == 'pass' else 'badge-orange' }}">
+            {{ 'Зачёт' if e.teacher_result == 'pass' else 'Незачёт' }}
+          </span>
+          {% elif e.is_graded %}
+          <span class="badge badge-green">Проверено: {{ e.teacher_score }}/22</span>
+          {% else %}
+          <span class="badge" style="background:#fef3c7;color:#92400e">Ожидает проверки</span>
+          {% endif %}
+          <button class="btn btn-sm btn-secondary toggle-essay" data-id="{{ e.id }}">Открыть</button>
+        </div>
+      </div>
+
+      <div class="essay-body" id="essay-{{ e.id }}" style="display:none">
+        <div style="background:var(--bg);border-radius:8px;padding:16px;margin-bottom:16px;border:1px solid var(--border)">
+          <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:.06em;margin-bottom:8px">
+            {{ 'Текст итогового сочинения — декабрь' if e.essay_type == 'final' else 'Текст сочинения ЕГЭ — задание 27' }}
+          </div>
+          <div style="white-space:pre-wrap;line-height:1.7;font-size:0.92rem">{{ e.text }}</div>
+        </div>
+
+        {% if e.checklist_json %}
+        <div style="background:#f0f9ff;border-radius:8px;padding:14px;margin-bottom:16px;border:1px solid #bae6fd">
+          <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px">Самооценка ученика</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            {% if e.essay_type == 'final' %}
+            {% for key, label in final_essay_checks.items() %}
+            <span style="background:white;border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:0.8rem">
+              {{ label }}: <strong>{{ 'Да' if e.checklist_dict.get(key) else 'Нет' }}</strong>
+            </span>
+            {% endfor %}
+            {% else %}
+            {% for k, v in e.checklist_dict.items() %}
+            <span style="background:white;border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:0.8rem">
+              <strong>{{ k }}</strong>: {{ v }}
+            </span>
+            {% endfor %}
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+
+        {% if e.teacher_comment %}
+        <div style="background:#f0fdf4;border-radius:8px;padding:14px;margin-bottom:16px;border:1px solid #bbf7d0">
+          <div style="font-size:0.78rem;font-weight:700;color:var(--success);margin-bottom:6px">Комментарий преподавателя</div>
+          <div style="font-size:0.9rem;white-space:pre-wrap">{{ e.teacher_comment }}</div>
+        </div>
+        {% endif %}
+
+        <form action="/py/admin/essays/{{ e.id }}/grade" method="POST" style="background:white;border:1px solid var(--border);border-radius:10px;padding:18px">
+          <div style="font-weight:800;margin-bottom:14px">{{ 'Результат итогового сочинения' if e.essay_type == 'final' else 'Оценка сочинения ЕГЭ' }}</div>
+          {% if e.essay_type == 'final' %}
+          <div class="form-group">
+            <label class="form-label">Решение администратора</label>
+            <select name="teacher_result" class="form-input" required>
+              <option value="">Выберите результат</option>
+              <option value="pass" {{ 'selected' if e.teacher_result == 'pass' else '' }}>Зачёт</option>
+              <option value="fail" {{ 'selected' if e.teacher_result == 'fail' else '' }}>Незачёт</option>
+            </select>
+          </div>
+          {% else %}
+          <div class="grid-2" style="gap:14px;margin-bottom:14px">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Итоговый балл (0–22)</label>
+              <input type="number" name="teacher_score" class="form-input" min="0" max="22"
+                     value="{{ e.teacher_score if e.teacher_score is not none else '' }}"
+                     placeholder="Введите балл" required>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Оценки по критериям (опционально)</label>
+              <div class="admin-criteria-grid" style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px">
+                {% for key,cap in checklist_caps.items() %}
+                <div style="text-align:center">
+                  <div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:2px">{{ key }}</div>
+                  <input type="number" name="crit_{{ key }}" class="form-input" style="padding:4px;text-align:center;font-size:0.82rem"
+                         min="0" max="{{ cap }}"
+                         value="{{ e.teacher_criteria.get(key, '') if e.teacher_criteria else '' }}"
+                         placeholder="{{ cap }}">
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          {% endif %}
+          <div class="form-group" style="margin-bottom:14px">
+            <label class="form-label">Комментарий для ученика</label>
+            <textarea name="teacher_comment" class="form-input" rows="4"
+                      placeholder="Напишите подробный комментарий: что хорошо, что нужно доработать, конкретные советы...">{{ e.teacher_comment or '' }}</textarea>
+          </div>
+          <div style="display:flex;gap:10px">
+            <button type="submit" class="btn btn-primary">{{ 'Сохранить результат' if e.essay_type == 'final' else 'Сохранить оценку' }}</button>
+            {% if e.is_graded %}
+            <span style="color:var(--text-muted);font-size:0.85rem;align-self:center">Последнее изменение: {{ e.teacher_graded_at[:16] if e.teacher_graded_at else '—' }}</span>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state" style="padding:80px 20px">
+    <div class="icon">—</div>
+    <div style="font-size:1.1rem;font-weight:700;margin-bottom:8px">Сочинений пока нет</div>
+    <div style="color:var(--text-muted)">Как только ученики отправят работы, они появятся здесь.</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll('.toggle-essay').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var id = this.dataset.id;
+    var body = document.getElementById('essay-' + id);
+    var open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : 'block';
+    this.textContent = open ? 'Открыть' : 'Закрыть';
+  });
+});
+
+document.querySelectorAll('[data-filter]').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    var f = this.dataset.filter;
+    document.querySelectorAll('.essay-item').forEach(function(item) {
+      var show = f === 'all' || (f === 'graded' && item.dataset.graded === 'yes') || (f === 'ungraded' && item.dataset.graded === 'no');
+      item.style.display = show ? '' : 'none';
+    });
+  });
+});
+</script>
+{% endblock %}

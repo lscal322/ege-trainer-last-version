@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}ЕГЭ Тренажёр{% endblock %}
+{% block content %}
+<main class="landing-simple">
+  <header class="landing-simple-header">
+    <a href="/py/" class="landing-simple-brand">ЕГЭ Тренажёр</a>
+    <div class="landing-simple-auth">
+      <button class="theme-toggle landing-theme-toggle" type="button" data-theme-toggle>
+        <span class="theme-toggle-icon" aria-hidden="true">☾</span>
+        <span class="theme-toggle-label">Тёмная тема</span>
+      </button>
+      <a href="/py/login?tab=login" class="landing-simple-login">Войти</a>
+      <a href="/py/register" class="btn btn-primary">Регистрация</a>
+    </div>
+  </header>
+  <div class="landing-simple-content">
+    <div class="landing-simple-badge">Дипломный проект для подготовки к ЕГЭ</div>
+    <h1>Подготовься к экзамену<br><span>уверенно и без стресса</span></h1>
+    <p class="landing-simple-lead">Тренируйся, отслеживай результаты и находи слабые места<br>на одной удобной платформе.</p>
+    <a href="/py/register" class="btn btn-primary btn-lg landing-simple-start">Начать подготовку</a>
+
+    <div class="landing-simple-modes">
+      <article>
+        <div class="landing-mode-icon mode-blue">✓</div>
+        <div><h3>Тренировка</h3><p>Решай задания по выбранным темам и предметам.</p></div>
+      </article>
+      <article>
+        <div class="landing-mode-icon mode-purple">◷</div>
+        <div><h3>Пробный экзамен</h3><p>Проверь себя в формате настоящего ЕГЭ.</p></div>
+      </article>
+      <article>
+        <div class="landing-mode-icon mode-orange">↗</div>
+        <div><h3>Адаптивный режим</h3><p>Получай задания с учётом своего уровня.</p></div>
+      </article>
+      <article>
+        <div class="landing-mode-icon mode-green">▤</div>
+        <div><h3>Прогресс и ошибки</h3><p>Анализируй результаты и работай над ошибками.</p></div>
+      </article>
+    </div>
+  </div>
+  <p class="landing-simple-copy">© 2026 ЕГЭ Тренажёр</p>
+</main>
+{% endblock %}

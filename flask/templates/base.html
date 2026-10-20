@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="/py/static/favicon.svg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}ЕГЭ Тренажёр{% endblock %}</title>
+  <meta name="description" content="Подготовка к ЕГЭ: задания по четырём предметам, тренировки, учебные экзамены и статистика результатов.">
+  <script>
+    (function () {
+      var theme = 'light';
+      try {
+        if (localStorage.getItem('ege-trainer-theme') === 'dark') theme = 'dark';
+      } catch (e) {}
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <link rel="stylesheet" href="/py/static/css/style.css">
+  <script>
+    window.csrfToken = {{ csrf_token() | tojson }};
+    (function () {
+      var originalFetch = window.fetch;
+      window.fetch = function (input, options) {
+        var url = new URL(input instanceof Request ? input.url : String(input), location.href);
+        var settings = Object.assign({}, options || {});
+        var method = String(settings.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
+        if (url.origin === location.origin && !['GET','HEAD','OPTIONS'].includes(method)) {
+          var headers = new Headers(settings.headers || (input instanceof Request ? input.headers : undefined));
+          headers.set('X-CSRFToken', window.csrfToken);
+          settings.headers = headers;
+        }
+        return originalFetch.call(window, input, settings);
+      };
+    })();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+{% if user %}
+<nav class="navbar">
+  <a href="/py/" class="navbar-brand">ЕГЭ Тренажёр</a>
+  <div class="navbar-links">
+    <a href="/py/">Предметы</a>
+    <a href="/py/analytics">Аналитика</a>
+    <a href="/py/mistakes">Мои ошибки</a>
+    {% if not user.is_admin %}<a href="/py/my-essays">Мои сочинения</a>{% endif %}
+    <a href="/py/arguments">Банк аргументов</a>
+    <a href="/py/news">Новости</a>
+    <a href="{{ '/py/admin/support' if user.is_admin else '/py/support' }}">Поддержка</a>
+    <a href="/py/leaderboard">Рейтинг</a>
+    <a href="/py/profile">Профиль</a>
+    {% if user.is_admin %}
+    <a href="/py/admin" style="color:#fca5a5;font-weight:700">Админ</a>
+    {% endif %}
+  </div>
+  <div class="navbar-user">
+    <button class="theme-toggle" type="button" data-theme-toggle>
+      <span class="theme-toggle-icon" aria-hidden="true">☾</span>
+      <span class="theme-toggle-label">Тёмная тема</span>
+    </button>
+    <span class="xp-badge">{{ user.xp }} XP</span>
+    <span style="color:rgba(255,255,255,0.85);font-size:0.88rem">{{ user.name }}</span>
+    <form method="post" action="/py/logout"><button class="btn-logout" type="submit">Выйти</button></form>
+  </div>
+</nav>
+{% elif request.path not in ['/py', '/py/'] %}
+<button class="theme-toggle theme-toggle-floating" type="button" data-theme-toggle>
+  <span class="theme-toggle-icon" aria-hidden="true">☾</span>
+  <span class="theme-toggle-label">Тёмная тема</span>
+</button>
+{% endif %}
+{% block content %}{% endblock %}
+<script src="/py/static/js/theme.js"></script>
+<script src="/py/static/js/app.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

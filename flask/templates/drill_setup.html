@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Набивка руки — {{ subj.title }}{% endblock %}
+{% block content %}
+<div class="container" style="max-width:760px">
+  <a href="/py/subjects/{{ subject }}" class="back-link">← {{ subj.title }}</a>
+  <div class="page-title">Режим «Набивка руки»</div>
+  <div class="page-subtitle">Выбери номер задания — будешь решать только его, пока не достигнешь 100%</div>
+
+  {% if task_rows %}
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px">
+    {% for row in task_rows %}
+    <a href="/py/subjects/{{ subject }}/drill/{{ row.task_number }}" class="subject-card" style="padding:18px;text-align:center;border-color:var(--border)">
+      <div style="font-size:2rem;font-weight:800;color:var(--primary);margin-bottom:6px">№{{ row.task_number }}</div>
+      <div style="font-size:0.82rem;color:var(--text-muted)">{{ row.section }}</div>
+      <div style="margin-top:10px"><span class="badge badge-blue">Тренировать</span></div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state"><div class="icon">—</div><div>Задания для выбора не найдены</div></div>
+  {% endif %}
+</div>
+{% endblock %}
